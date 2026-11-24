@@ -254,11 +254,115 @@ const DEFAULT_CONFIG = {
   adSkip: true,
   adFastForward: false,
   adFastForwardRate: 4,
+  activePresetId: null,      // null = Custom / Free Changes mode (not saved to any preset)
+  autoSaveToPreset: true,    // auto-save changes to the active preset when one is selected
   alwaysAllowChannels: [],
   blockedChannels: [],
   blockedKeywords: [],
   fields: DEFAULT_FIELDS
 };
+
+// 3. Default Presets Library
+const DEFAULT_PRESETS = {
+  'preset_focus': {
+    id: 'preset_focus',
+    name: 'Deep Focus & Study',
+    description: 'Blocks Shorts, comments, watch suggestions, entertainment, gaming, vlogs, and gossip. Focus on education and science.',
+    isBuiltIn: true,
+    createdAt: 1700000000000,
+    config: {
+      enabled: true,
+      blockShorts: true,
+      onlySearch: false,
+      blockWatchSuggestions: true,
+      blockComments: true,
+      adSkip: true,
+      adFastForward: false,
+      adFastForwardRate: 4,
+      alwaysAllowChannels: [],
+      blockedChannels: [],
+      blockedKeywords: ['reaction', 'drama', 'gossip', 'tiktok'],
+      fields: (() => {
+        const fields = JSON.parse(JSON.stringify(DEFAULT_FIELDS));
+        if (fields.entertainment) fields.entertainment.state = 'block';
+        if (fields.vlogs) fields.vlogs.state = 'block';
+        if (fields.pranks_comedy) fields.pranks_comedy.state = 'block';
+        if (fields.gaming) fields.gaming.state = 'block';
+        if (fields.gameplays) fields.gameplays.state = 'block';
+        if (fields.drama_gossip) fields.drama_gossip.state = 'block';
+        if (fields.reactions) fields.reactions.state = 'block';
+        if (fields.clickbait_speculation) fields.clickbait_speculation.state = 'block';
+        if (fields.hauls_consumerism) fields.hauls_consumerism.state = 'block';
+        if (fields.education) fields.education.state = 'allow';
+        if (fields.science) fields.science.state = 'allow';
+        return fields;
+      })()
+    }
+  },
+  'preset_minimal_search': {
+    id: 'preset_minimal_search',
+    name: 'Minimal Search Only',
+    description: 'Pure utility: Hides the entire home page feed, watch suggestions, and comments. Distraction-free search bar only.',
+    isBuiltIn: true,
+    createdAt: 1700000000000,
+    config: {
+      enabled: true,
+      blockShorts: true,
+      onlySearch: true,
+      blockWatchSuggestions: true,
+      blockComments: true,
+      adSkip: true,
+      adFastForward: false,
+      adFastForwardRate: 4,
+      alwaysAllowChannels: [],
+      blockedChannels: [],
+      blockedKeywords: [],
+      fields: JSON.parse(JSON.stringify(DEFAULT_FIELDS))
+    }
+  },
+  'preset_casual': {
+    id: 'preset_casual',
+    name: 'Casual & Balanced',
+    description: 'Comfortable browsing: Skips video ads and blocks Shorts, while keeping recommendations, comments, and topics open.',
+    isBuiltIn: true,
+    createdAt: 1700000000000,
+    config: {
+      enabled: true,
+      blockShorts: true,
+      onlySearch: false,
+      blockWatchSuggestions: false,
+      blockComments: false,
+      adSkip: true,
+      adFastForward: false,
+      adFastForwardRate: 4,
+      alwaysAllowChannels: [],
+      blockedChannels: [],
+      blockedKeywords: [],
+      fields: JSON.parse(JSON.stringify(DEFAULT_FIELDS))
+    }
+  }
+};
+
+/**
+ * Creates a clean snapshot of configuration properties suitable for a preset.
+ */
+function extractPresetConfig(cfg) {
+  if (!cfg || typeof cfg !== 'object') cfg = DEFAULT_CONFIG;
+  return {
+    enabled: typeof cfg.enabled === 'boolean' ? cfg.enabled : true,
+    blockShorts: typeof cfg.blockShorts === 'boolean' ? cfg.blockShorts : true,
+    onlySearch: typeof cfg.onlySearch === 'boolean' ? cfg.onlySearch : false,
+    blockWatchSuggestions: typeof cfg.blockWatchSuggestions === 'boolean' ? cfg.blockWatchSuggestions : false,
+    blockComments: typeof cfg.blockComments === 'boolean' ? cfg.blockComments : false,
+    adSkip: typeof cfg.adSkip === 'boolean' ? cfg.adSkip : true,
+    adFastForward: typeof cfg.adFastForward === 'boolean' ? cfg.adFastForward : false,
+    adFastForwardRate: parseFloat(cfg.adFastForwardRate) || 4,
+    alwaysAllowChannels: Array.isArray(cfg.alwaysAllowChannels) ? JSON.parse(JSON.stringify(cfg.alwaysAllowChannels)) : [],
+    blockedChannels: Array.isArray(cfg.blockedChannels) ? JSON.parse(JSON.stringify(cfg.blockedChannels)) : [],
+    blockedKeywords: Array.isArray(cfg.blockedKeywords) ? JSON.parse(JSON.stringify(cfg.blockedKeywords)) : [],
+    fields: cfg.fields && typeof cfg.fields === 'object' ? JSON.parse(JSON.stringify(cfg.fields)) : JSON.parse(JSON.stringify(DEFAULT_FIELDS))
+  };
+}
 
 // 4. Utility Functions
 

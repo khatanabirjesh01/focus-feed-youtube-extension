@@ -74,6 +74,23 @@
   const resetBlockedKeywordsBtn = document.getElementById('reset-blocked-keywords-btn');
   const importBlockedKeywordsFile = document.getElementById('import-blocked-keywords-file');
 
+  // DOM Elements - Presets
+  const quickPresetSelect = document.getElementById('quick-preset-select');
+  const presetStatusIndicator = document.getElementById('preset-status-indicator');
+  const presetActiveName = document.getElementById('preset-active-name');
+  const presetActiveDesc = document.getElementById('preset-active-desc');
+  const presetActiveBadge = document.getElementById('preset-active-badge');
+  const togglePresetAutosave = document.getElementById('toggle-preset-autosave');
+  const presetDetachContainer = document.getElementById('preset-detach-container');
+  const btnDetachPreset = document.getElementById('btn-detach-preset');
+  const newPresetNameInput = document.getElementById('new-preset-name-input');
+  const btnSaveNewPreset = document.getElementById('btn-save-new-preset');
+  const btnImportPreset = document.getElementById('btn-import-preset');
+  const btnExportAllPresets = document.getElementById('btn-export-all-presets');
+  const importPresetFileInput = document.getElementById('import-preset-file-input');
+  const presetsCount = document.getElementById('presets-count');
+  const presetsCardsContainer = document.getElementById('presets-cards-container');
+
   // DOM Elements - Backup
   const exportJsonBtn = document.getElementById('export-json-btn');
   const importJsonBtn = document.getElementById('import-json-btn');
@@ -83,6 +100,7 @@
 
   let customFieldSelectedState = 'off';
   let toastTimeout = null;
+  let presets = Object.assign({}, DEFAULT_PRESETS);
 
   // =========================================================================
   // 1. Toast Notification Utility
@@ -97,13 +115,25 @@
   }
 
   // =========================================================================
-  // 2. Storage Persistence
+  // 2. Storage Persistence & Auto-Save to Active Preset
   // =========================================================================
   function saveConfig(updatedConfig, toastMsg = null) {
     config = updatedConfig;
-    chrome.storage.local.set(config, () => {
-      if (toastMsg) showToast(toastMsg);
-    });
+
+    // Check if auto-saving to an active preset is active
+    if (config.activePresetId && config.autoSaveToPreset !== false && presets[config.activePresetId]) {
+      presets[config.activePresetId].config = extractPresetConfig(config);
+      presets[config.activePresetId].updatedAt = Date.now();
+      chrome.storage.local.set(Object.assign({}, config, { presets: presets }), () => {
+        if (toastMsg) showToast(toastMsg);
+        renderPresetsUI();
+      });
+    } else {
+      chrome.storage.local.set(config, () => {
+        if (toastMsg) showToast(toastMsg);
+        renderPresetsUI();
+      });
+    }
   }
 
   // =========================================================================
@@ -1004,7 +1034,384 @@
   });
 
   // =========================================================================
-  // 9. Initial Load & UI Population
+  // 9. Presets Management Engine
+  // =========================================================================
+
+  function renderPresetsUI() {
+    // 1. Populate Quick Preset Select dropdown
+    if (quickPresetSelect) {
+      quickPresetSelect.innerHTML = '';
+
+      // Default Custom / Unsaved mode option
+      const customOpt = document.createElement('option');
+      customOpt.value = '';
+      customOpt.textContent = '✨ Custom (Unsaved Changes)';
+      quickPresetSelect.appendChild(customOpt);
+
+      // Loop through presets
+      for (const [id, preset] of Object.entries(presets)) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `${preset.name} ${preset.isBuiltIn ? '(Built-in)' : ''}`;
+        quickPresetSelect.appendChild(opt);
+      }
+
+      quickPresetSelect.value = config.activePresetId || '';
+    }
+
+    // 2. Update Status Indicator Pill
+    if (presetStatusIndicator) {
+      if (!config.activePresetId || !presets[config.activePresetId]) {
+        presetStatusIndicator.className = 'preset-status-pill custom';
+        presetStatusIndicator.textContent = 'Custom';
+        presetStatusIndicator.title = 'Custom mode: Changes are active on YouTube but not saved to any preset';
+      } else if (config.autoSaveToPreset !== false) {
+        presetStatusIndicator.className = 'preset-status-pill autosaving';
+        presetStatusIndicator.textContent = 'Auto-Save';
+        presetStatusIndicator.title = `Auto-saving changes to preset: "${presets[config.activePresetId].name}"`;
+      } else {
+        presetStatusIndicator.className = 'preset-status-pill manual';
+        presetStatusIndicator.textContent = 'Manual';
+        presetStatusIndicator.title = `Auto-save disabled for preset: "${presets[config.activePresetId].name}"`;
+      }
+    }
+
+    // 3. Update Presets Tab elements
+    if (presetActiveName && presetActiveDesc && presetActiveBadge) {
+      if (config.activePresetId && presets[config.activePresetId]) {
+        const activePreset = presets[config.activePresetId];
+        presetActiveName.textContent = activePreset.name;
+        presetActiveDesc.textContent = activePreset.description || 'Custom user preset loaded.';
+        presetActiveBadge.textContent = activePreset.isBuiltIn ? 'Built-in' : 'Custom';
+        presetActiveBadge.className = `badge ${activePreset.isBuiltIn ? 'badge-secondary' : 'badge-primary'}`;
+        if (presetDetachContainer) presetDetachContainer.style.display = 'flex';
+      } else {
+        presetActiveName.textContent = 'Custom / Unsaved Changes';
+        presetActiveDesc.textContent = 'Current tweaks are active on YouTube, but not saved to any preset.';
+        presetActiveBadge.textContent = 'Custom Mode';
+        presetActiveBadge.className = 'badge';
+        if (presetDetachContainer) presetDetachContainer.style.display = 'none';
+      }
+    }
+
+    if (togglePresetAutosave) {
+      togglePresetAutosave.checked = Boolean(config.autoSaveToPreset !== false);
+    }
+
+    if (presetsCount) {
+      presetsCount.textContent = String(Object.keys(presets).length);
+    }
+
+    // 4. Render Preset Cards
+    if (presetsCardsContainer) {
+      presetsCardsContainer.innerHTML = '';
+
+      for (const [id, preset] of Object.entries(presets)) {
+        const isActive = config.activePresetId === id;
+        const card = document.createElement('div');
+        card.className = `preset-card ${isActive ? 'active' : ''}`;
+        card.dataset.presetId = id;
+
+        // Count stats from preset config
+        const pCfg = preset.config || {};
+        const allowCount = Array.isArray(pCfg.alwaysAllowChannels) ? pCfg.alwaysAllowChannels.length : 0;
+        const blockCount = Array.isArray(pCfg.blockedChannels) ? pCfg.blockedChannels.length : 0;
+        const shortsStatus = pCfg.blockShorts ? 'Shorts 🚫' : 'Shorts ✓';
+        const suggestionsStatus = pCfg.blockWatchSuggestions ? 'Suggestions 🚫' : 'Suggestions ✓';
+
+        card.innerHTML = `
+          <div class="preset-card-header">
+            <span class="preset-card-title">${preset.name}</span>
+            <div class="preset-card-badges">
+              ${isActive ? '<span class="badge badge-accent">ACTIVE</span>' : ''}
+              <span class="badge ${preset.isBuiltIn ? 'badge-secondary' : 'badge-primary'}">${preset.isBuiltIn ? 'Built-in' : 'Custom'}</span>
+            </div>
+          </div>
+          <p class="preset-card-desc">${preset.description || 'User configured preset profile.'}</p>
+          <div class="preset-card-footer">
+            <span class="preset-card-stats">${shortsStatus} • ${suggestionsStatus} • Allow: ${allowCount} • Block: ${blockCount}</span>
+            <div class="preset-card-actions">
+              ${isActive ? '<span class="preset-current-indicator">✓ Active</span>' : `<button class="btn btn-xs btn-primary btn-activate-preset" data-id="${id}">✓ Activate</button>`}
+              <button class="icon-btn btn-export-preset" data-id="${id}" title="Export this preset to JSON">📤</button>
+              ${!preset.isBuiltIn ? `
+                <button class="icon-btn btn-rename-preset" data-id="${id}" title="Rename preset">✏️</button>
+                <button class="icon-btn btn-delete-preset" data-id="${id}" title="Delete preset">🗑️</button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+
+        presetsCardsContainer.appendChild(card);
+      }
+    }
+  }
+
+  function activatePreset(presetId) {
+    if (!presetId || presetId === 'custom') {
+      config.activePresetId = null;
+      saveConfig(config, 'Switched to Custom Mode (Changes will not overwrite any preset)');
+      applyConfigToUI();
+      renderPresetsUI();
+      return;
+    }
+
+    const target = presets[presetId];
+    if (!target || !target.config) {
+      showToast('Error: Preset not found');
+      return;
+    }
+
+    const snapshot = extractPresetConfig(target.config);
+    config = Object.assign({}, config, snapshot, { activePresetId: presetId });
+
+    chrome.storage.local.set(config, () => {
+      applyConfigToUI();
+      renderPresetsUI();
+      showToast(`Activated preset: "${target.name}"`);
+    });
+  }
+
+  function saveNewPreset(name) {
+    const cleanName = (name || '').trim();
+    if (!cleanName) {
+      showToast('Please enter a name for the new preset');
+      return;
+    }
+
+    const newId = `preset_${Date.now()}`;
+    const newPreset = {
+      id: newId,
+      name: cleanName,
+      description: `Custom preset created on ${new Date().toLocaleDateString()}`,
+      isBuiltIn: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      config: extractPresetConfig(config)
+    };
+
+    presets[newId] = newPreset;
+    config.activePresetId = newId;
+
+    chrome.storage.local.set(Object.assign({}, config, { presets: presets }), () => {
+      if (newPresetNameInput) newPresetNameInput.value = '';
+      applyConfigToUI();
+      renderPresetsUI();
+      showToast(`Saved and activated preset: "${cleanName}"`);
+    });
+  }
+
+  function renamePreset(presetId) {
+    const preset = presets[presetId];
+    if (!preset || preset.isBuiltIn) return;
+    const newName = prompt('Enter a new name for this preset:', preset.name);
+    if (!newName || !newName.trim()) return;
+    preset.name = newName.trim();
+    preset.updatedAt = Date.now();
+
+    chrome.storage.local.set({ presets: presets }, () => {
+      renderPresetsUI();
+      showToast(`Renamed preset to "${preset.name}"`);
+    });
+  }
+
+  function deletePreset(presetId) {
+    const preset = presets[presetId];
+    if (!preset) return;
+    if (preset.isBuiltIn) {
+      showToast('Built-in presets cannot be deleted');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete preset "${preset.name}"?`)) {
+      delete presets[presetId];
+      if (config.activePresetId === presetId) {
+        config.activePresetId = null;
+      }
+      chrome.storage.local.set(Object.assign({}, config, { presets: presets }), () => {
+        applyConfigToUI();
+        renderPresetsUI();
+        showToast('Preset deleted');
+      });
+    }
+  }
+
+  function exportSinglePreset(presetId) {
+    const preset = presets[presetId];
+    if (!preset) return;
+    const jsonStr = JSON.stringify(preset, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `focusfeed_preset_${preset.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported preset "${preset.name}"`);
+  }
+
+  function exportAllPresets() {
+    const payload = {
+      version: '1.0',
+      type: 'focusfeed_presets_bundle',
+      exportedAt: new Date().toISOString(),
+      presets: presets
+    };
+    const jsonStr = JSON.stringify(payload, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'focusfeed_all_presets.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Exported all presets successfully!');
+  }
+
+  function importPresetsFromFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        let importedCount = 0;
+
+        if (data && data.presets && typeof data.presets === 'object') {
+          // Bundle of presets
+          for (const [id, p] of Object.entries(data.presets)) {
+            if (p && p.name && p.config) {
+              const newId = `preset_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+              presets[newId] = {
+                id: newId,
+                name: p.name,
+                description: p.description || 'Imported preset profile',
+                isBuiltIn: false,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                config: extractPresetConfig(p.config)
+              };
+              importedCount++;
+            }
+          }
+        } else if (data && data.name && data.config) {
+          // Single preset
+          const newId = `preset_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+          presets[newId] = {
+            id: newId,
+            name: data.name,
+            description: data.description || 'Imported preset profile',
+            isBuiltIn: false,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            config: extractPresetConfig(data.config)
+          };
+          importedCount++;
+        } else {
+          throw new Error('Unrecognized preset format');
+        }
+
+        if (importedCount > 0) {
+          chrome.storage.local.set({ presets: presets }, () => {
+            renderPresetsUI();
+            showToast(`Imported ${importedCount} preset(s) successfully!`);
+          });
+        } else {
+          showToast('No valid presets found in file');
+        }
+      } catch (err) {
+        showToast('Error importing preset: Invalid JSON file');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Bind Preset Event Listeners
+  if (quickPresetSelect) {
+    quickPresetSelect.addEventListener('change', (e) => {
+      activatePreset(e.target.value);
+    });
+  }
+
+  if (togglePresetAutosave) {
+    togglePresetAutosave.addEventListener('change', (e) => {
+      config.autoSaveToPreset = e.target.checked;
+      saveConfig(config, e.target.checked ? 'Auto-save enabled for active preset' : 'Auto-save paused (Changes will not modify preset)');
+    });
+  }
+
+  if (btnDetachPreset) {
+    btnDetachPreset.addEventListener('click', () => {
+      activatePreset(null);
+    });
+  }
+
+  if (btnSaveNewPreset) {
+    btnSaveNewPreset.addEventListener('click', () => {
+      saveNewPreset(newPresetNameInput ? newPresetNameInput.value : '');
+    });
+  }
+
+  if (newPresetNameInput) {
+    newPresetNameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        saveNewPreset(newPresetNameInput.value);
+      }
+    });
+  }
+
+  if (btnExportAllPresets) {
+    btnExportAllPresets.addEventListener('click', exportAllPresets);
+  }
+
+  if (btnImportPreset) {
+    btnImportPreset.addEventListener('click', () => {
+      if (importPresetFileInput) importPresetFileInput.click();
+    });
+  }
+
+  if (importPresetFileInput) {
+    importPresetFileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        importPresetsFromFile(file);
+        e.target.value = '';
+      }
+    });
+  }
+
+  if (presetsCardsContainer) {
+    presetsCardsContainer.addEventListener('click', (e) => {
+      const activateBtn = e.target.closest('.btn-activate-preset');
+      if (activateBtn) {
+        const id = activateBtn.dataset.id;
+        activatePreset(id);
+        return;
+      }
+
+      const exportBtn = e.target.closest('.btn-export-preset');
+      if (exportBtn) {
+        const id = exportBtn.dataset.id;
+        exportSinglePreset(id);
+        return;
+      }
+
+      const renameBtn = e.target.closest('.btn-rename-preset');
+      if (renameBtn) {
+        const id = renameBtn.dataset.id;
+        renamePreset(id);
+        return;
+      }
+
+      const deleteBtn = e.target.closest('.btn-delete-preset');
+      if (deleteBtn) {
+        const id = deleteBtn.dataset.id;
+        deletePreset(id);
+        return;
+      }
+    });
+  }
+
+  // =========================================================================
+  // 10. Initial Load & UI Population
   // =========================================================================
   function applyConfigToUI() {
     updateMasterToggleUI(config.enabled);
@@ -1022,8 +1429,8 @@
   }
 
   function initPopup() {
-    chrome.storage.local.get(DEFAULT_CONFIG, (stored) => {
-      config = Object.assign({}, DEFAULT_CONFIG, stored);
+    chrome.storage.local.get(null, (stored) => {
+      config = Object.assign({}, DEFAULT_CONFIG, stored || {});
       // Ensure fields exist and include any newly added default categories
       if (!config.fields || typeof config.fields !== 'object') {
         config.fields = JSON.parse(JSON.stringify(DEFAULT_FIELDS));
@@ -1034,7 +1441,17 @@
           }
         }
       }
+
+      // Load presets or initialize with DEFAULT_PRESETS
+      if (stored && stored.presets && typeof stored.presets === 'object' && Object.keys(stored.presets).length > 0) {
+        presets = stored.presets;
+      } else {
+        presets = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+        chrome.storage.local.set({ presets: presets });
+      }
+
       applyConfigToUI();
+      renderPresetsUI();
     });
   }
 

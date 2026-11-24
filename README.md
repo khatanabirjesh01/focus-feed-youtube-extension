@@ -50,6 +50,18 @@ FocusFeed is a production-ready, client-side Chrome Extension for YouTube.com th
    - **Empty Feed Guard:** If 20+ cards are hidden on Home while fewer than 4 remain visible, shows a dismissible top banner.
    - **Backup & Restore:** Full configuration export/import via JSON in `chrome.storage.local`.
 
+5. **Multi-Preset Profile Management & Auto-Save Engine**
+   - **Named Preset Profiles:** Save your complete configuration (toggles, 3-state fields, allowed channels, blocked channels, and keywords) as reusable profiles saved locally in your browser.
+   - **Quick Preset Switcher Bar:** Easily select your active preset from anywhere in the popup via the top selector bar.
+   - **Built-in Presets:**
+     - *Deep Focus & Study:* Aggressively blocks distraction topics (entertainment, vlogs, pranks, gaming, gossip), watch suggestions, comments, and Shorts, while allowing educational and science content.
+     - *Minimal Search Only:* Pure search utility mode—hides the entire home feed, watch recommendations, and comments.
+     - *Casual & Balanced:* Blocks video ads and Shorts while keeping suggestions, comments, and topics open for browsing.
+   - **Real-Time Auto-Save:** When an active preset is selected, any tweaks you make across Toggles, Fields, or Lists are automatically saved to that preset in local storage in real time.
+   - **Custom / Unsaved Mode (Free Tweaks):** Select "✨ Custom (Unsaved Changes)" or click "Detach to Custom" to experiment and apply changes to YouTube freely without altering or overwriting any saved preset.
+   - **Import & Export:** Export individual presets or your entire preset library as `.json` files to share across devices or backup your setups.
+   - **Rename & Delete:** Easily rename or delete custom profiles.
+
 ---
 
 ## Installation Steps (Brave / Chrome)

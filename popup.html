@@ -35,6 +35,19 @@
       </div>
     </header>
 
+    <!-- Quick Preset Bar -->
+    <div class="quick-preset-bar">
+      <div class="preset-select-wrapper">
+        <label for="quick-preset-select" class="preset-label">🎛️ Preset:</label>
+        <select id="quick-preset-select" class="preset-select" title="Switch active preset or select Custom mode">
+          <option value="">✨ Custom (Unsaved Changes)</option>
+        </select>
+      </div>
+      <div class="preset-status-pill custom" id="preset-status-indicator" title="Preset Status">
+        Custom
+      </div>
+    </div>
+
     <!-- Navigation Tabs -->
     <nav class="tabs-nav">
       <button class="tab-btn active" data-tab="toggles">
@@ -48,6 +61,10 @@
       <button class="tab-btn" data-tab="lists">
         <span class="tab-icon">📋</span>
         <span>Lists</span>
+      </button>
+      <button class="tab-btn" data-tab="presets">
+        <span class="tab-icon">🎛️</span>
+        <span>Presets</span>
       </button>
     </nav>
 
@@ -352,6 +369,82 @@
             <input type="file" id="import-file-input" accept=".json" style="display: none;">
           </div>
           <button id="reset-defaults-btn" class="btn-text-danger">Reset All to Factory Defaults</button>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- TAB 4: PRESETS -->
+      <!-- ============================================================== -->
+      <section id="tab-presets" class="tab-pane">
+        <!-- Active Preset Status Card -->
+        <div class="preset-active-card">
+          <div class="preset-active-header">
+            <div class="preset-active-title-group">
+              <span class="preset-header-icon">🎛️</span>
+              <div>
+                <strong id="preset-active-name">Custom / Unsaved Changes</strong>
+                <div class="preset-active-sub" id="preset-active-desc">Current tweaks are active on YouTube, but not saved to any preset.</div>
+              </div>
+            </div>
+            <span class="badge" id="preset-active-badge">Custom</span>
+          </div>
+
+          <!-- Auto-save Toggle -->
+          <div class="preset-toggle-row">
+            <div class="preset-toggle-info">
+              <span class="preset-toggle-label">Auto-save changes to active preset</span>
+              <p class="preset-toggle-desc">When enabled, any tweaks made in Toggles, Fields, or Lists are automatically saved to your selected preset in real time.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-preset-autosave" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- Custom / Unsaved Mode Detach Button -->
+          <div class="preset-detach-row" id="preset-detach-container" style="display: none;">
+            <p class="preset-detach-text">Want to test changes without modifying this preset?</p>
+            <button id="btn-detach-preset" class="btn btn-xs btn-secondary" title="Switch to Custom Mode so your changes won't overwrite this preset">
+              ✨ Detach to Custom (Don't Save to Preset)
+            </button>
+          </div>
+        </div>
+
+        <!-- Save Current Settings as New Preset -->
+        <div class="list-section">
+          <div class="list-title">Save Current Settings as New Preset</div>
+          <p class="list-desc">Saves your current toggles, categories, channels, and keywords into a new named profile locally.</p>
+          <div class="list-input-row">
+            <input type="text" id="new-preset-name-input" placeholder="e.g. Work Hours, Study, Gaming Setup">
+            <button id="btn-save-new-preset" class="btn btn-sm btn-primary">Save Preset</button>
+          </div>
+        </div>
+
+        <!-- Preset Actions Bar (Import / Export) -->
+        <div class="list-section">
+          <div class="list-section-header">
+            <span class="list-title">Preset Library Actions</span>
+            <div class="list-actions">
+              <button id="btn-import-preset" class="btn btn-xs btn-secondary" title="Import presets from JSON">📥 Import</button>
+              <button id="btn-export-all-presets" class="btn btn-xs btn-secondary" title="Export all presets to JSON">📤 Export All</button>
+              <input type="file" id="import-preset-file-input" accept=".json" style="display: none;">
+            </div>
+          </div>
+          <p class="list-desc">Import presets shared by friends or export your preset collection to a JSON backup.</p>
+        </div>
+
+        <!-- Presets Library List -->
+        <div class="list-section">
+          <div class="list-section-header">
+            <div class="list-title-group">
+              <span class="list-title">Saved Presets</span>
+              <span class="count-pill" id="presets-count">0</span>
+            </div>
+          </div>
+          <p class="list-desc">Click <strong>Activate</strong> on any preset to switch to it immediately. Changes auto-save to the active preset.</p>
+          <div id="presets-cards-container" class="presets-cards-container">
+            <!-- Dynamic Preset Cards -->
+          </div>
         </div>
       </section>
     </main>
