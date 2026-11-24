@@ -18,21 +18,25 @@ FocusFeed is a production-ready, client-side Chrome Extension for YouTube.com th
 
 2. **Layer 2: Video Card Filtering (Strict Top-Down Precedence)**
    - Operates strictly on video cards in Home, Subscriptions, Search, and Watch sidebar (`ytd-rich-item-renderer`, `ytd-video-renderer`, `ytd-compact-video-renderer`, `ytd-grid-video-renderer`, `yt-lockup-view-model`). Main video player is never hidden.
+   - **Hydration-Proof Evaluation:** YouTube renders modern video cards in two phases (title first, then channel name/handle 50–200ms later). Cards are guarded and only marked as evaluated once their channel metadata has fully hydrated, preventing blocked channels from slipping through.
    - Evaluation order:
      1. **Blocked Channels & Collaborations (High Priority):**
         - If a channel is blocked, ANY video it collaborates on, co-authors, or is featured in is immediately hidden!
-        - Scans joint bylines (`"PJ Explained and PJ"`, `"Creator A & Creator B"`, `"A x B"`), multiple channel links/elements on the card, video titles (`"ft. Channel"`, `"feat. Channel"`, `"with Channel"`, `"w/ Channel"`, `"@handle"`, or distinctive channel names in the title), and card snippets.
+        - Scans primary channel names, avatar links (`a#avatar-link`), channel handles (`@handle`), joint bylines (`"PJ Explained and PJ"`, `"Creator A & Creator B"`, `"A x B"`), multiple channel links/elements on the card, video titles (`"ft. Channel"`, `"feat. Channel"`, `"with Channel"`, `"w/ Channel"`, or distinctive channel names in the title), and card snippets.
      2. **Always-Allow Channels (Primitive / Supreme Override):**
         - Videos from these channels are shown immediately. Overrides Shorts blocker, custom blocked keywords, and topic fields.
         - Allowed channels' Shorts are permitted to play on `youtube.com/shorts/*` even when the background Shorts Blocker is active.
+        - **Override Example:** If you set the *Entertainment* field to **Block**, but put an entertainment creator in **Always-Allow Channels**, that creator's videos will still be shown!
      3. **Shorts Blocker (for non-allowed channels):** Hides Shorts cards and shelves.
      4. **Custom Blocked Keywords:** Word-boundary matching (`\b`) ensures short words like `"ass"` do not match `"class"`, `"bass"`, or `"classic"`.
      5. **Field Filter (3-State per Field: `Off` | `Allow` | `Block`):**
         - Predefined: Science, Technology, Finance, Education, News & Politics, Gaming, Entertainment, Sports, Music, Fitness, Motivation Bluff, Edit Videos, Vlogs, Pranks & Comedy, Gameplays & Streams, Food Vlogs & Mukbang, Drama & Gossip, Clickbait & Speculation, Reactions, Hauls & Unboxing, True Crime & Horror (+ custom fields).
+        - **Channel & Handle Awareness:** Scans a unified index of video titles, channel display names, `@handles`, bylines, and snippets.
+        - **Direct Channel Association:** You can expand any category in the **Fields** tab and add channel handles (e.g. `@creator`) or channel names directly into that field's keywords to tie specific creators to that category.
         - Non-contradictory logic:
           - If &ge;1 field is `Allow`: SHOW only if video matches at least one `Allow` field AND zero `Block` fields.
           - If 0 fields are `Allow`: HIDE if video matches any `Block` field; otherwise SHOW.
-        - Standalone `classifyVideo(title, channelName, fields)` function.
+        - Standalone `classifyVideo(title, channelName, fields, metadata)` function.
         - **Import, Export & Reset:** Export and import fields as JSON, or reset to factory defaults at any time.
 
 3. **Channel & Keyword Management (Mutual Exclusion & Granular Control)**
@@ -44,9 +48,10 @@ FocusFeed is a production-ready, client-side Chrome Extension for YouTube.com th
    - **Granular Import & Export:** Dedicated import and export for Always-Allow Channels, Blocked Channels, and Custom Blocked Keywords supporting both `.json` and plain `.txt` (one per line) formats, plus individual list Reset buttons.
 
 4. **Performance, SPA Support & Guardrails**
-   - Centralized `SELECTORS` constant.
-   - Debounced `MutationObserver` (150ms) to filter infinite-scroll cards without scroll lag.
-   - `data-ff-checked` attribute prevents redundant re-scans. Immediate re-evaluation on `chrome.storage.onChanged` and `yt-navigate-finish`.
+   - Centralized `SELECTORS` constant covering both traditional and modern 2024–2026 YouTube view models (`yt-lockup-view-model`).
+   - Debounced `MutationObserver` (150ms) monitoring both whole card insertions and asynchronous channel/byline element & text updates (`ytd-channel-name`, `#channel-name`, `a[href*="/@"]`, and text nodes).
+   - Smart `data-ff-checked` hydration guard: prevents redundant re-scans while ensuring unhydrated cards are never permanently locked before their creator details arrive.
+   - Immediate real-time re-evaluation on `chrome.storage.onChanged` and `yt-navigate-finish`.
    - **Empty Feed Guard:** If 20+ cards are hidden on Home while fewer than 4 remain visible, shows a dismissible top banner.
    - **Backup & Restore:** Full configuration export/import via JSON in `chrome.storage.local`.
 
