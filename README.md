@@ -52,15 +52,19 @@ FocusFeed is a production-ready, client-side Chrome Extension for YouTube.com th
 
 ---
 
-## Installation Steps (Unpacked Extension in Google Chrome)
+## Installation Steps (Brave / Chrome)
 
-1. Open Google Chrome.
-2. Navigate to `chrome://extensions/` in the address bar.
+1. Open Brave (or Chrome).
+2. Navigate to `brave://extensions/` (or `chrome://extensions/`) in the address bar.
 3. Enable **Developer mode** using the toggle switch in the top right corner.
 4. Click the **Load unpacked** button in the top left corner.
 5. Select the project folder:
    ```
    /Users/birjeshkhatana/PROJECTS/youtube_extension
    ```
-6. The **FocusFeed** icon will appear in your Chrome toolbar. Pin it for quick access.
-7. Open [https://www.youtube.com](https://www.youtube.com) and test the filter toggles, channel lists, and topic fields!
+6. The **FocusFeed** icon will appear in your browser toolbar. Pin it for quick access.
+7. **To Use in Private / Incognito Mode:**
+   - In `brave://extensions/`, click **Details** on the FocusFeed extension card.
+   - Scroll down to **"Allow in Private"** (or **"Allow in Incognito"**) and flip the switch **ON**.
+   - With `"incognito": "spanning"` enabled, FocusFeed seamlessly filters feeds, skips ads, and enforces your rules in private browsing!
+8. Open [https://www.youtube.com](https://www.youtube.com) and test the filter toggles, channel lists, and topic fields!

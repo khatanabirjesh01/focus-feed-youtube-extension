@@ -81,8 +81,8 @@
         <!-- Master Status Banner -->
         <div class="master-status-card" id="master-status-card">
           <div class="master-status-text">
-            <strong>FocusFeed is <span id="master-status-text">Active</span></strong>
-            <p id="master-status-sub">All active Layer 1 &amp; Layer 2 filters are enforcing rules in real time.</p>
+            <strong>FocusFeed Master Switch: <span id="master-status-text">Active</span></strong>
+            <p id="master-status-sub">Turns all filters on or off globally. When paused, YouTube is shown completely unrestricted.</p>
           </div>
         </div>
 
@@ -95,7 +95,7 @@
                 <span class="toggle-name">Shorts Blocker</span>
                 <span class="badge badge-accent">Override</span>
               </div>
-              <p class="toggle-desc">Hides shelves, cards, sidebar tab, and redirects /shorts URLs.</p>
+              <p class="toggle-desc">Hides Shorts shelves, cards, and sidebar links, and redirects /shorts URLs. Overrides feed display for standard channels (channels in your Always-Allow list can still play Shorts).</p>
             </div>
             <label class="switch">
               <input type="checkbox" id="toggle-shorts">
@@ -110,7 +110,7 @@
                 <span class="toggle-name">Only Search</span>
                 <span class="badge badge-accent">Clean Home</span>
               </div>
-              <p class="toggle-desc">Shows no feed on the home page so you only browse via intentional search.</p>
+              <p class="toggle-desc">Clears the entire home page feed so you are never distracted by recommendations upon opening YouTube. Use the top search bar for intentional viewing.</p>
             </div>
             <label class="switch">
               <input type="checkbox" id="toggle-only-search">
@@ -124,7 +124,7 @@
               <div class="toggle-title-row">
                 <span class="toggle-name">Block Watch Suggestions</span>
               </div>
-              <p class="toggle-desc">Hides recommendation feeds at the bottom &amp; sidebar while playing a video.</p>
+              <p class="toggle-desc">Hides recommendation feeds at the bottom, sidebar ('Up next'), and end-screen tiles while playing a video. Your playing video, title, channel info, and description remain visible.</p>
             </div>
             <label class="switch">
               <input type="checkbox" id="toggle-watch-suggestions">
@@ -138,7 +138,7 @@
               <div class="toggle-title-row">
                 <span class="toggle-name">Comments &amp; Live Chat</span>
               </div>
-              <p class="toggle-desc">Hides comment sections, live chat frames, and chat replays.</p>
+              <p class="toggle-desc">Hides comment sections, live stream chat frames, and chat replays to eliminate distractions and toxic commentary.</p>
             </div>
             <label class="switch">
               <input type="checkbox" id="toggle-comments">
@@ -153,7 +153,7 @@
                 <span class="toggle-name">Auto-Skip Video Ads</span>
                 <span class="badge badge-accent">Auto</span>
               </div>
-              <p class="toggle-desc">Automatically clicks "Skip Ad" and finishes unskippable video ads immediately.</p>
+              <p class="toggle-desc">Detects video ads, clicks 'Skip Ad' the instant it appears, and fast-seeks unskippable video ads to completion so your video plays without interruption.</p>
             </div>
             <label class="switch">
               <input type="checkbox" id="toggle-ad-skip">
@@ -167,7 +167,7 @@
               <div class="toggle-title-row">
                 <span class="toggle-name">Ad Fast-Forward</span>
               </div>
-              <p class="toggle-desc">Accelerates ad speed and mutes ad audio during playback.</p>
+              <p class="toggle-desc">Alternative to skipping: accelerates video ads to your chosen speed (2x, 4x, 8x, 16x) and mutes ad audio. Automatically restores normal 1x speed and volume when your video resumes.</p>
             </div>
             <div class="toggle-right-controls">
               <select id="select-ad-ff-rate" class="ad-ff-select" title="Fast-forward speed">
@@ -193,7 +193,11 @@
         <div class="info-callout">
           <div class="info-callout-icon">💡</div>
           <div class="info-callout-text">
-            <strong>Evaluation Rule:</strong> If &ge;1 field is <strong>Allow</strong>, only matching videos (with 0 block matches) are shown. If 0 fields are Allow, any video matching a <strong>Block</strong> field is hidden.
+            <strong>How Topic Categories Work (3-State Engine):</strong>
+            <div>• <strong>Off:</strong> Neutral—no filtering on this topic.</div>
+            <div>• <strong>Allow (Strict Mode):</strong> Only videos matching at least one 'Allow' topic will show.</div>
+            <div>• <strong>Block:</strong> Any video matching this topic is hidden.</div>
+            <div class="override-note">⚡ <strong>Override Rule:</strong> If you block a category (e.g., Entertainment) but add a specific channel from that category to <strong>Always-Allow Channels</strong>, that channel's videos WILL STILL BE SHOWN! Always-Allow always overrides category blocks.</div>
           </div>
         </div>
 
@@ -261,7 +265,13 @@
               <input type="file" id="import-allow-channels-file" accept=".txt,.json" style="display: none;">
             </div>
           </div>
-          <p class="list-desc">Videos from these channels are ALWAYS shown (bypasses Shorts and keywords). Mutually exclusive with Blocked.</p>
+          <p class="list-desc">
+            ⭐ <strong>Supreme Override (Always Wins):</strong> Videos from channels in this list are ALWAYS displayed, overriding all other rules:
+            <br>• <strong>Overrides Blocked Categories:</strong> E.g., if you set the 'Entertainment' field to Block, but you put an entertainment creator here, their videos will still be shown!
+            <br>• <strong>Overrides Blocked Keywords:</strong> Shows videos even if their titles contain blocked keywords.
+            <br>• <strong>Overrides Shorts Blocker:</strong> Shorts from these channels are allowed to play.
+            <br>• <strong>Mutual Exclusion:</strong> Cannot add a channel here if it is currently in your Blocked Channels list.
+          </p>
           <div class="list-input-row">
             <input type="text" id="allow-channel-input" placeholder="@handle, URL, or channel name">
             <button id="add-allow-channel-btn" class="btn btn-sm btn-primary">Add</button>
@@ -285,7 +295,12 @@
               <input type="file" id="import-blocked-channels-file" accept=".txt,.json" style="display: none;">
             </div>
           </div>
-          <p class="list-desc">Videos from these channels (and any videos they collaborate on or are featured in) are hidden.</p>
+          <p class="list-desc">
+            🚫 <strong>Strict Channel &amp; Collaboration Block:</strong> Immediately hides all videos from these channels:
+            <br>• <strong>Collaborations:</strong> If a blocked channel collaborates with another channel (e.g., 'PJ Explained and PJ' or 'Creator A &amp; Creator B'), that video is automatically blocked!
+            <br>• <strong>Title Mentions:</strong> Videos featuring a blocked channel in the title (e.g., 'ft. Channel', 'with Channel', or '@handle') are blocked.
+            <br>• <strong>Mutual Exclusion:</strong> Cannot add a channel here if it is currently in your Always-Allow list. Remove it from Always-Allow first.
+          </p>
           <div class="list-input-row">
             <input type="text" id="blocked-channel-input" placeholder="@handle, URL, or channel name">
             <button id="add-blocked-channel-btn" class="btn btn-sm btn-primary">Add</button>
@@ -309,7 +324,11 @@
               <input type="file" id="import-blocked-keywords-file" accept=".txt,.json" style="display: none;">
             </div>
           </div>
-          <p class="list-desc">Videos matching these exact words are hidden. Uncheck to temporarily disable.</p>
+          <p class="list-desc">
+            🔤 <strong>Keyword Filter:</strong> Hides videos containing these exact words in their title, channel name, or description:
+            <br>• <strong>Word-Boundary Safe:</strong> Short words like 'ass' will never block words like 'class' or 'classic'.
+            <br>• <strong>Always-Allow Override:</strong> Videos from your Always-Allow channels will still show even if they contain a blocked keyword.
+          </p>
           <div class="list-input-row">
             <input type="text" id="blocked-keyword-input" placeholder="e.g. drama, reaction, gossip">
             <button id="add-blocked-keyword-btn" class="btn btn-sm btn-primary">Add</button>

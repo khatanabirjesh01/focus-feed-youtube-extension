@@ -574,11 +574,6 @@
         reason: classification.reason
       };
     }
-      return {
-        action: classification.action,
-        reason: classification.reason
-      };
-    }
 
     // Default: Show
     return { action: 'SHOW', reason: 'Default show' };
@@ -826,53 +821,54 @@
 
   function processAdPlayback() {
     if (!config.enabled) return;
+    try {
+      // Detect player and active video element
+      const player = document.getElementById('movie_player');
+      const video = player ? player.querySelector('video') : document.querySelector('video.html5-main-video');
+      if (!player || !video) return;
 
-    // Detect player and active video element
-    const player = document.getElementById('movie_player');
-    const video = player ? player.querySelector('video') : document.querySelector('video.html5-main-video');
-    if (!player || !video) return;
+      // Check if an ad is currently playing on YouTube
+      const isAdShowing = player.classList.contains('ad-showing') ||
+                          player.classList.contains('ad-interrupting') ||
+                          Boolean(document.querySelector('.video-ads.ytp-ad-module:not(:empty)'));
 
-    // Check if an ad is currently playing on YouTube
-    const isAdShowing = player.classList.contains('ad-showing') ||
-                        player.classList.contains('ad-interrupting') ||
-                        Boolean(document.querySelector('.video-ads.ytp-ad-module:not(:empty)'));
-
-    if (isAdShowing) {
-      // 1. Auto-Skip Feature
-      if (config.adSkip) {
-        // Try clicking YouTube's native skip button if available
-        const skipBtn = document.querySelector(
-          '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, button.ytp-ad-skip-button-text, [id^="skip-button:"] button, .ytp-ad-skip-button-slot button'
-        );
-        if (skipBtn) {
-          skipBtn.click();
-        } else if (isFinite(video.duration) && video.duration > 0 && video.currentTime < video.duration - 0.1) {
-          // Seek to completion to trigger YouTube's ad completion event
-          video.currentTime = video.duration - 0.05;
-        }
-      }
-
-      // 2. Fast-Forward Acceleration Fallback Feature
-      if (config.adFastForward) {
-        const targetRate = parseFloat(config.adFastForwardRate) || 4;
-        if (video.playbackRate !== targetRate) {
-          if (!wasMutedByAdEngine) {
-            wasMutedByAdEngine = !video.muted;
-            video.muted = true; // Mute high-speed ad audio
+      if (isAdShowing) {
+        // 1. Auto-Skip Feature
+        if (config.adSkip) {
+          // Try clicking YouTube's native skip button if available
+          const skipBtn = document.querySelector(
+            '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, button.ytp-ad-skip-button-text, [id^="skip-button:"] button, .ytp-ad-skip-button-slot button'
+          );
+          if (skipBtn) {
+            skipBtn.click();
+          } else if (isFinite(video.duration) && video.duration > 0 && video.currentTime < video.duration - 0.1) {
+            // Seek to completion to trigger YouTube's ad completion event
+            video.currentTime = video.duration - 0.05;
           }
-          video.playbackRate = targetRate;
+        }
+
+        // 2. Fast-Forward Acceleration Fallback Feature
+        if (config.adFastForward) {
+          const targetRate = parseFloat(config.adFastForwardRate) || 4;
+          if (video.playbackRate !== targetRate) {
+            if (!wasMutedByAdEngine) {
+              wasMutedByAdEngine = !video.muted;
+              video.muted = true; // Mute high-speed ad audio
+            }
+            video.playbackRate = targetRate;
+          }
+        }
+      } else {
+        // Ad is no longer playing: restore audio and normal playback rate
+        if (wasMutedByAdEngine) {
+          video.muted = false;
+          wasMutedByAdEngine = false;
+        }
+        if (video.playbackRate > 2.0 && config.adFastForward) {
+          video.playbackRate = 1.0;
         }
       }
-    } else {
-      // Ad is no longer playing: restore audio and normal playback rate
-      if (wasMutedByAdEngine) {
-        video.muted = false;
-        wasMutedByAdEngine = false;
-      }
-      if (video.playbackRate > 2.0 && config.adFastForward) {
-        video.playbackRate = 1.0;
-      }
-    }
+    } catch (_) {}
   }
 
   // =========================================================================

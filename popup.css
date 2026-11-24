@@ -483,6 +483,14 @@ input:checked + .slider:before {
   color: #bfdbfe;
 }
 
+.override-note {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  font-size: 11px;
+}
+
 .info-callout-icon {
   font-size: 14px;
   flex-shrink: 0;
@@ -757,7 +765,7 @@ input:checked + .slider:before {
   font-size: 11px;
   color: var(--text-secondary);
   margin-bottom: 10px;
-  line-height: 1.35;
+  line-height: 1.5;
 }
 
 .list-input-row {
