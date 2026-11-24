@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusFeed Settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="6"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <line x1="12" y1="2" x2="12" y2="4"></line>
+            <line x1="12" y1="20" x2="12" y2="22"></line>
+            <line x1="2" y1="12" x2="4" y2="12"></line>
+            <line x1="20" y1="12" x2="22" y2="12"></line>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <h1>FocusFeed</h1>
+          <span class="version-badge">v1.0</span>
+        </div>
+      </div>
+      <div class="header-master-toggle">
+        <label class="switch" title="Globally Enable / Disable FocusFeed">
+          <input type="checkbox" id="master-toggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="toggles">
+        <span class="tab-icon">⚡</span>
+        <span>Toggles</span>
+      </button>
+      <button class="tab-btn" data-tab="fields">
+        <span class="tab-icon">🏷️</span>
+        <span>Fields</span>
+      </button>
+      <button class="tab-btn" data-tab="lists">
+        <span class="tab-icon">📋</span>
+        <span>Lists</span>
+      </button>
+    </nav>
+
+    <!-- Main Tab Content Area -->
+    <main class="content-body">
+      <!-- ============================================================== -->
+      <!-- TAB 1: TOGGLES -->
+      <!-- ============================================================== -->
+      <section id="tab-toggles" class="tab-pane active">
+        <!-- Live Tab Statistics Card -->
+        <div class="stats-card">
+          <div class="stats-header">
+            <div class="stats-title-group">
+              <span class="live-dot" id="tab-status-dot"></span>
+              <span class="stats-title" id="tab-status-title">Current YouTube Feed</span>
+            </div>
+            <button id="refresh-stats-btn" class="icon-btn" title="Refresh Live Counts">🔄</button>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-box filtered">
+              <div class="stat-number" id="stat-hidden-count">0</div>
+              <div class="stat-label">Videos Filtered</div>
+            </div>
+            <div class="stat-box visible">
+              <div class="stat-number" id="stat-visible-count">0</div>
+              <div class="stat-label">Videos Visible</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Master Status Banner -->
+        <div class="master-status-card" id="master-status-card">
+          <div class="master-status-text">
+            <strong>FocusFeed is <span id="master-status-text">Active</span></strong>
+            <p id="master-status-sub">All active Layer 1 &amp; Layer 2 filters are enforcing rules in real time.</p>
+          </div>
+        </div>
+
+        <!-- Toggles List -->
+        <div class="toggles-list">
+          <!-- Toggle 1: Shorts Blocker -->
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Shorts Blocker</span>
+                <span class="badge badge-accent">Override</span>
+              </div>
+              <p class="toggle-desc">Hides shelves, cards, sidebar tab, and redirects /shorts URLs.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-shorts">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- Toggle 2: Only Search (Hide Home Feed) -->
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Only Search</span>
+                <span class="badge badge-accent">Clean Home</span>
+              </div>
+              <p class="toggle-desc">Shows no feed on the home page so you only browse via intentional search.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-only-search">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- Toggle 3: Block Watch Suggestions -->
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Block Watch Suggestions</span>
+              </div>
+              <p class="toggle-desc">Hides recommendation feeds at the bottom &amp; sidebar while playing a video.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-watch-suggestions">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- Toggle 4: Comments & Live Chat -->
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Comments &amp; Live Chat</span>
+              </div>
+              <p class="toggle-desc">Hides comment sections, live chat frames, and chat replays.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-comments">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- Toggle 5: Auto-Skip Video Ads -->
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Auto-Skip Video Ads</span>
+                <span class="badge badge-accent">Auto</span>
+              </div>
+              <p class="toggle-desc">Automatically clicks "Skip Ad" and finishes unskippable video ads immediately.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-ad-skip">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- Toggle 6: Ad Fast-Forward -->
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Ad Fast-Forward</span>
+              </div>
+              <p class="toggle-desc">Accelerates ad speed and mutes ad audio during playback.</p>
+            </div>
+            <div class="toggle-right-controls">
+              <select id="select-ad-ff-rate" class="ad-ff-select" title="Fast-forward speed">
+                <option value="2">2x</option>
+                <option value="4" selected>4x</option>
+                <option value="8">8x</option>
+                <option value="16">16x</option>
+              </select>
+              <label class="switch">
+                <input type="checkbox" id="toggle-ad-fast-forward">
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- TAB 2: FIELDS -->
+      <!-- ============================================================== -->
+      <section id="tab-fields" class="tab-pane">
+        <!-- Field Rule Explanation -->
+        <div class="info-callout">
+          <div class="info-callout-icon">💡</div>
+          <div class="info-callout-text">
+            <strong>Evaluation Rule:</strong> If &ge;1 field is <strong>Allow</strong>, only matching videos (with 0 block matches) are shown. If 0 fields are Allow, any video matching a <strong>Block</strong> field is hidden.
+          </div>
+        </div>
+
+        <!-- Search Bar & Action Bar -->
+        <div class="search-box">
+          <input type="text" id="field-search-input" placeholder="Search fields or keywords...">
+        </div>
+
+        <div class="field-action-bar">
+          <button id="import-fields-btn" class="btn btn-xs btn-secondary" title="Import fields from JSON">
+            <span>📥</span> Import Fields
+          </button>
+          <button id="export-fields-btn" class="btn btn-xs btn-secondary" title="Export fields to JSON">
+            <span>📤</span> Export Fields
+          </button>
+          <button id="reset-fields-btn" class="btn btn-xs btn-text-danger" title="Reset all fields to default">
+            <span>🔄</span> Reset to Defaults
+          </button>
+          <input type="file" id="import-fields-file" accept=".json" style="display: none;">
+        </div>
+
+        <!-- Fields List -->
+        <div class="fields-list" id="fields-container">
+          <!-- Dynamically populated fields -->
+        </div>
+
+        <!-- Add Custom Field Form -->
+        <div class="add-custom-field-box">
+          <div class="section-title">Add Custom Field</div>
+          <div class="form-group">
+            <label for="custom-field-name">Field Name</label>
+            <input type="text" id="custom-field-name" placeholder="e.g. Cooking, Photography">
+          </div>
+          <div class="form-group">
+            <label for="custom-field-keywords">Keywords (comma-separated)</label>
+            <input type="text" id="custom-field-keywords" placeholder="e.g. recipe, chef, baking, kitchen">
+          </div>
+          <div class="form-group">
+            <label>Initial State</label>
+            <div class="segmented-control" id="custom-field-state">
+              <button type="button" class="seg-btn active" data-state="off">Off</button>
+              <button type="button" class="seg-btn" data-state="allow">Allow</button>
+              <button type="button" class="seg-btn" data-state="block">Block</button>
+            </div>
+          </div>
+          <button id="add-custom-field-btn" class="btn btn-primary full-width">+ Add Field</button>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- TAB 3: LISTS -->
+      <!-- ============================================================== -->
+      <section id="tab-lists" class="tab-pane">
+        <!-- List 1: Always-Allow Channels -->
+        <div class="list-section">
+          <div class="list-section-header">
+            <div class="list-title-group">
+              <span class="list-title">Always-Allow Channels</span>
+              <span class="count-pill" id="allow-channels-count">0</span>
+            </div>
+            <div class="list-actions">
+              <button id="import-allow-channels-btn" class="btn btn-xs btn-secondary" title="Import channels (.txt or .json)">📥 Import</button>
+              <button id="export-allow-channels-btn" class="btn btn-xs btn-secondary" title="Export channels to JSON">📤 Export</button>
+              <button id="reset-allow-channels-btn" class="btn btn-xs btn-text-danger" title="Clear all allowed channels">🔄 Reset</button>
+              <input type="file" id="import-allow-channels-file" accept=".txt,.json" style="display: none;">
+            </div>
+          </div>
+          <p class="list-desc">Videos from these channels are ALWAYS shown (bypasses Shorts and keywords). Mutually exclusive with Blocked.</p>
+          <div class="list-input-row">
+            <input type="text" id="allow-channel-input" placeholder="@handle, URL, or channel name">
+            <button id="add-allow-channel-btn" class="btn btn-sm btn-primary">Add</button>
+          </div>
+          <div class="rule-items-container" id="allow-channels-chips">
+            <!-- Item rows rendered here -->
+          </div>
+        </div>
+
+        <!-- List 2: Blocked Channels -->
+        <div class="list-section">
+          <div class="list-section-header">
+            <div class="list-title-group">
+              <span class="list-title">Blocked Channels</span>
+              <span class="count-pill" id="blocked-channels-count">0</span>
+            </div>
+            <div class="list-actions">
+              <button id="import-blocked-channels-btn" class="btn btn-xs btn-secondary" title="Import channels (.txt or .json)">📥 Import</button>
+              <button id="export-blocked-channels-btn" class="btn btn-xs btn-secondary" title="Export channels to JSON">📤 Export</button>
+              <button id="reset-blocked-channels-btn" class="btn btn-xs btn-text-danger" title="Clear all blocked channels">🔄 Reset</button>
+              <input type="file" id="import-blocked-channels-file" accept=".txt,.json" style="display: none;">
+            </div>
+          </div>
+          <p class="list-desc">Videos from these channels (and any videos they collaborate on or are featured in) are hidden.</p>
+          <div class="list-input-row">
+            <input type="text" id="blocked-channel-input" placeholder="@handle, URL, or channel name">
+            <button id="add-blocked-channel-btn" class="btn btn-sm btn-primary">Add</button>
+          </div>
+          <div class="rule-items-container" id="blocked-channels-chips">
+            <!-- Item rows rendered here -->
+          </div>
+        </div>
+
+        <!-- List 3: Custom Blocked Keywords -->
+        <div class="list-section">
+          <div class="list-section-header">
+            <div class="list-title-group">
+              <span class="list-title">Custom Blocked Keywords</span>
+              <span class="count-pill" id="blocked-keywords-count">0</span>
+            </div>
+            <div class="list-actions">
+              <button id="import-blocked-keywords-btn" class="btn btn-xs btn-secondary" title="Import keywords (.txt or .json)">📥 Import</button>
+              <button id="export-blocked-keywords-btn" class="btn btn-xs btn-secondary" title="Export keywords to JSON">📤 Export</button>
+              <button id="reset-blocked-keywords-btn" class="btn btn-xs btn-text-danger" title="Clear all blocked keywords">🔄 Reset</button>
+              <input type="file" id="import-blocked-keywords-file" accept=".txt,.json" style="display: none;">
+            </div>
+          </div>
+          <p class="list-desc">Videos matching these exact words are hidden. Uncheck to temporarily disable.</p>
+          <div class="list-input-row">
+            <input type="text" id="blocked-keyword-input" placeholder="e.g. drama, reaction, gossip">
+            <button id="add-blocked-keyword-btn" class="btn btn-sm btn-primary">Add</button>
+          </div>
+          <div class="rule-items-container" id="blocked-keywords-chips">
+            <!-- Item rows rendered here -->
+          </div>
+        </div>
+
+        <!-- List 4: Backup & Restore -->
+        <div class="list-section backup-section">
+          <div class="list-title">Backup &amp; Restore</div>
+          <p class="list-desc">Export or restore your configuration, rules, and custom fields as JSON.</p>
+          <div class="backup-btn-row">
+            <button id="export-json-btn" class="btn btn-secondary">
+              <span>📥</span> Export JSON
+            </button>
+            <button id="import-json-btn" class="btn btn-secondary">
+              <span>📤</span> Import JSON
+            </button>
+            <input type="file" id="import-file-input" accept=".json" style="display: none;">
+          </div>
+          <button id="reset-defaults-btn" class="btn-text-danger">Reset All to Factory Defaults</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Action completed</div>
+  </div>
+
+  <!-- Shared Defaults and Popup Logic -->
+  <script src="defaults.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
