@@ -351,7 +351,7 @@
 
     // 3. Extract All Channel Links & Collaborators
     const channelLinks = card.querySelectorAll(
-      'ytd-channel-name a, #channel-name a, #byline-container a, .yt-lockup-metadata-view-model__subtitle a, a.yt-core-attributed-string__link, a[href*="/@"], a[href*="/channel/"], a[href*="/c/"], a[href*="/user/"]'
+      'ytd-channel-name a, #channel-name a, #byline-container a, .yt-lockup-metadata-view-model__subtitle a, a.yt-core-attributed-string__link, a[href*="/@"], a[href*="/channel/"], a[href*="/c/"], a[href*="/user/"], a#avatar-link'
     );
 
     const collaborators = [];
@@ -360,13 +360,17 @@
 
     channelLinks.forEach(linkEl => {
       const href = (linkEl.getAttribute('href') || linkEl.href || '').trim();
-      const name = (linkEl.textContent || linkEl.getAttribute('title') || '').trim();
+      let name = (linkEl.textContent || linkEl.getAttribute('title') || linkEl.getAttribute('aria-label') || '').trim();
       let handle = '';
 
       if (href.includes('/@')) {
         const idx = href.indexOf('/@');
         handle = href.substring(idx + 1).split('/')[0].split('?')[0].toLowerCase();
         if (!handle.startsWith('@')) handle = '@' + handle;
+      }
+
+      if (!name && handle) {
+        name = handle.replace(/^@/, '');
       }
 
       if (href && !allHrefs.includes(href)) {
@@ -377,20 +381,23 @@
       }
 
       if (name || href || handle) {
-        const exists = collaborators.some(c => c.name === name && c.href === href);
+        const exists = collaborators.some(c => (c.name === name && c.href === href) || (c.handle && c.handle === handle));
         if (!exists) {
           collaborators.push({ name, href, handle });
         }
       }
     });
 
-    // 4. Primary Channel (First detected link or first text)
-    const primaryName = (
-      (collaborators[0] && collaborators[0].name) ||
-      (card.querySelector(SELECTORS.channelName)?.textContent || '').trim()
-    );
-    const primaryHref = (collaborators[0] && collaborators[0].href) || '';
-    const primaryHandle = (collaborators[0] && collaborators[0].handle) || '';
+    // 4. Primary Channel (Prioritize named collaborator, then byline/channel-name container)
+    const namedCollab = collaborators.find(c => c.name && c.name.trim() && !c.name.startsWith('@'));
+    const handledCollab = collaborators.find(c => c.handle && c.handle.trim());
+    const hrefCollab = collaborators.find(c => c.href && c.href.trim());
+    const fallbackChannelEl = card.querySelector(SELECTORS.channelName);
+    const fallbackName = (fallbackChannelEl ? fallbackChannelEl.textContent || '' : '').trim();
+
+    const primaryName = (namedCollab ? namedCollab.name : (fallbackName || (handledCollab ? handledCollab.handle.replace(/^@/, '') : (bylineText || '')))).trim();
+    const primaryHandle = (handledCollab ? handledCollab.handle : (primaryName ? '@' + primaryName.replace(/\s+/g, '').toLowerCase() : ''));
+    const primaryHref = (hrefCollab ? hrefCollab.href : (primaryHandle ? '/' + primaryHandle : ''));
 
     // 5. Byline Tokens (Split by collaboration delimiters)
     const bylineTokens = [];
@@ -565,10 +572,10 @@
 
     // -----------------------------------------------------------------------
     // RULE 5: Field Filter (3-State per Field: Off | Allow | Block)
-    // Evaluated via standalone classifyVideo function
+    // Evaluated via standalone classifyVideo function (with full card metadata)
     // -----------------------------------------------------------------------
     if (config.fields) {
-      const classification = classifyVideo(title, channel.name, config.fields);
+      const classification = classifyVideo(title, channel.name, config.fields, metadata);
       return {
         action: classification.action,
         reason: classification.reason
@@ -634,13 +641,32 @@
       const metadata = extractCardMetadata(card);
       const { title, channel } = metadata;
 
-      // CRITICAL GUARD: If card is an unpopulated skeleton (YouTube has not populated title or channel yet),
-      // DO NOT mark it as checked, and DO NOT hide it. Let it hydrate so it gets evaluated when populated.
-      if (!title && !channel.name && !metadata.bylineText) {
+      // Has YouTube populated the card's channel / byline / handle info?
+      const hasChannelInfo = Boolean(
+        (channel && channel.name && channel.name.trim()) ||
+        (channel && channel.handle && channel.handle.trim()) ||
+        (metadata.bylineText && metadata.bylineText.trim()) ||
+        (metadata.allHandles && metadata.allHandles.length > 0) ||
+        (metadata.allHrefs && metadata.allHrefs.length > 0)
+      );
+
+      // CRITICAL HYDRATION GUARD: If neither title nor channel info is ready yet,
+      // the card is still hydrating in YouTube's Polymer/DOM.
+      // Do NOT mark as permanently checked, so that as soon as YouTube injects the
+      // channel/byline/handle, the card will be evaluated with full channel metadata!
+      if (!title || !hasChannelInfo) {
+        if (title || metadata.isShort) {
+          const prelimDecision = evaluateCard(card, metadata);
+          if (prelimDecision.action === 'HIDE') {
+            card.setAttribute('data-ff-hidden', 'true');
+            card.setAttribute('data-ff-filter-reason', prelimDecision.reason);
+            hiddenCount++;
+          }
+        }
         continue;
       }
 
-      // Mark as checked only when metadata is available
+      // Mark as fully checked only when BOTH title and channel metadata are present!
       card.setAttribute('data-ff-checked', 'true');
 
       // Evaluate card against strict precedence
@@ -773,7 +799,7 @@
    * Observes dynamic DOM mutations as user scrolls or navigates.
    */
   const observer = new MutationObserver((mutations) => {
-    // Check if new cards were added
+    // Check if new cards were added OR if cards were hydrated with channel/byline/titles
     let hasRelevantNodes = false;
     for (let i = 0; i < mutations.length; i++) {
       const added = mutations[i].addedNodes;
@@ -785,11 +811,17 @@
               node.matches &&
               (node.matches(SELECTORS.videoCards) ||
                node.matches(SELECTORS.shortsShelves) ||
-               node.querySelector(SELECTORS.videoCards))
+               node.matches('ytd-channel-name, #channel-name, #byline-container, yt-formatted-string, a[href*="/@"], a[href*="/channel/"], a#avatar-link') ||
+               node.querySelector(SELECTORS.videoCards) ||
+               node.querySelector('ytd-channel-name, #channel-name, a[href*="/@"], a#avatar-link'))
             ) {
               hasRelevantNodes = true;
               break;
             }
+          } else if (node.nodeType === Node.TEXT_NODE && node.textContent && node.textContent.trim()) {
+            // Text node inserted (e.g. channel name text populated inside ytd-channel-name)
+            hasRelevantNodes = true;
+            break;
           }
         }
       }

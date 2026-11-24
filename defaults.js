@@ -741,14 +741,21 @@ function matchesChannelOrCollab(channelRule, cardMetadata) {
  * @param {string} title - Video title
  * @param {string} channelName - Channel name
  * @param {Object} fields - Map of topic fields with .state and .keywords
+ * @param {Object} [cardMetadata] - Optional full card metadata (handles, bylines, snippets)
  * @returns {{action: 'SHOW'|'HIDE', reason: string, matchedAllow: string[], matchedBlock: string[]}}
  */
-function classifyVideo(title, channelName, fields) {
-  const cleanTitle = (title || '').trim();
-  const cleanChannel = (channelName || '').trim();
+function classifyVideo(title, channelName, fields, cardMetadata = null) {
+  const cleanTitle = (title || (cardMetadata && cardMetadata.title) || '').trim();
+  const cleanChannel = (channelName || (cardMetadata && cardMetadata.channel && cardMetadata.channel.name) || '').trim();
+  const handle = ((cardMetadata && cardMetadata.channel && cardMetadata.channel.handle) || '').toLowerCase();
+  const allHandles = (cardMetadata && cardMetadata.allHandles && Array.isArray(cardMetadata.allHandles))
+    ? cardMetadata.allHandles.join(' ').toLowerCase()
+    : '';
+  const byline = ((cardMetadata && cardMetadata.bylineText) || '').toLowerCase();
+  const snippet = ((cardMetadata && cardMetadata.snippet) || '').toLowerCase();
 
   // Guard: If card metadata has not been populated by YouTube yet, do not evaluate
-  if (!cleanTitle && !cleanChannel) {
+  if (!cleanTitle && !cleanChannel && !byline) {
     return {
       action: 'SHOW',
       reason: 'Pending hydration',
@@ -757,7 +764,10 @@ function classifyVideo(title, channelName, fields) {
     };
   }
 
-  const text = `${cleanTitle} ${cleanChannel}`.toLowerCase();
+  // Combine title, channel, handles, bylines, and snippet into unified text for comprehensive scanning
+  const text = `${cleanTitle} ${cleanChannel} ${handle} ${allHandles} ${byline} ${snippet}`.toLowerCase();
+  const spacelessChannel = cleanChannel.replace(/\s+/g, '').toLowerCase();
+  const rawHandle = handle.replace(/^@/, '');
   const fieldList = Object.values(fields || {});
 
   const allowFields = [];
@@ -772,16 +782,61 @@ function classifyVideo(title, channelName, fields) {
     }
   }
 
-  // Helper to test if text matches any keyword of a given field
+  // Helper to test if text matches any keyword or channel of a given field
   function testFieldMatch(field) {
-    if (!field.keywords || !Array.isArray(field.keywords)) return false;
-    for (const kw of field.keywords) {
-      if (!kw) continue;
-      const regex = getWordBoundaryRegex(kw);
-      if (regex && regex.test(text)) {
-        return true;
+    if (!field) return false;
+
+    // 1. Test Field Keywords (supports words, phrases, and @handles)
+    if (field.keywords && Array.isArray(field.keywords)) {
+      for (const kw of field.keywords) {
+        if (!kw || !kw.trim()) continue;
+        const cleanKw = kw.trim().toLowerCase();
+
+        // If keyword is a channel handle (e.g. "@creator")
+        if (cleanKw.startsWith('@')) {
+          const targetHandle = cleanKw.slice(1);
+          if (
+            handle === cleanKw ||
+            rawHandle === targetHandle ||
+            allHandles.includes(cleanKw) ||
+            cleanChannel.toLowerCase() === targetHandle ||
+            spacelessChannel === targetHandle
+          ) {
+            return true;
+          }
+        }
+
+        // Direct channel name match if keyword matches channel display name exactly
+        if (
+          cleanChannel &&
+          (cleanChannel.toLowerCase() === cleanKw || spacelessChannel === cleanKw.replace(/\s+/g, ''))
+        ) {
+          return true;
+        }
+
+        // Standard word boundary regex test against combined text (title, channel, byline, snippet)
+        const regex = getWordBoundaryRegex(cleanKw);
+        if (regex && regex.test(text)) {
+          return true;
+        }
       }
     }
+
+    // 2. Test Field Dedicated Channels list (if present)
+    if (field.channels && Array.isArray(field.channels)) {
+      for (const chRule of field.channels) {
+        if (!chRule) continue;
+        if (cardMetadata) {
+          const res = matchesChannelOrCollab(chRule, cardMetadata);
+          if (res && res.matched) return true;
+        } else if (cleanChannel) {
+          if (matchesChannelRule(chRule, { name: cleanChannel, handle, href: '' })) {
+            return true;
+          }
+        }
+      }
+    }
+
     return false;
   }
 
