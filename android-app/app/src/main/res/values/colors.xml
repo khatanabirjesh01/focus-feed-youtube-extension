@@ -1,0 +1,11 @@
+<resources>
+    <color name="bg_primary">#0F0F11</color>
+    <color name="bg_secondary">#18181B</color>
+    <color name="bg_tertiary">#222226</color>
+    <color name="border_subtle">#27272A</color>
+    <color name="text_primary">#F4F4F5</color>
+    <color name="text_secondary">#A1A1AA</color>
+    <color name="accent_red">#FF4E45</color>
+    <color name="accent_green">#22C55E</color>
+    <color name="accent_amber">#F59E0B</color>
+</resources>

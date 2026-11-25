@@ -1,87 +1,159 @@
-# FocusFeed - Real-Time YouTube Filter (Chrome Extension Manifest V3)
+# FocusFeed — Distraction-Free YouTube Suite (Browser Extension & Android App)
 
-FocusFeed is a production-ready, client-side Chrome Extension for YouTube.com that filters Shorts, comments, channels, keywords, and topic fields in real-time with **zero external APIs** and zero network requests.
+**FocusFeed** is a 100% local, zero-API, privacy-first distraction filter for YouTube. It blocks YouTube Shorts, hides home and watch-page recommendation feeds, skips/fast-forwards ads, blocks specific channels (including collaborations), filters by keyword, and enforces 3-state topic categories—all with **zero external servers** and **zero data collection**.
 
----
-
-## Features
-
-1. **Layer 1: Hard UI & Format Toggles (CSS-First at `document_start`)**
-   - Injected before first paint on `document.documentElement` (`<html>`) so blocked elements never flash or shift.
-   - **Master Extension Toggle:** Instant global pause / activate.
-   - **Shorts Blocker:** Hides Shorts shelves (`ytd-reel-shelf-renderer`, `ytd-rich-section-renderer`), individual Shorts cards, and sidebar links. Client-side and SPA navigations to `youtube.com/shorts/*` are immediately redirected to `https://www.youtube.com/` (unless from an Always-Allow channel).
-   - **Only Search (Hide Home Feed):** Placed right under Shorts Blocker. Completely hides the home page feed on `youtube.com/` so you only use intentional search, eliminating mindless home feed scrolling.
-   - **Block Watch Suggestions:** When playing a video on watch pages (`youtube.com/watch?v=...`), completely hides recommendation feeds at the bottom and sidebar, as well as player end-screen cards. The video playing, title, channel, description, and controls remain 100% visible and untouched.
-   - **Comments & Live Chat Blocker:** Hides `#comments`, `ytd-comments`, `ytd-live-chat-frame`, and `#chatframe`.
-   - **Auto-Skip Video Ads:** Automatically clicks the native "Skip Ad" button and fast-seeks unskippable video ads to completion as soon as they begin.
-   - **Ad Fast-Forward & Auto-Mute:** Selectable acceleration speed (2x, 4x, 8x, 16x) that accelerates ad playback and mutes audio when ads play, seamlessly restoring normal 1x speed and audio when the video resumes.
-
-2. **Layer 2: Video Card Filtering (Strict Top-Down Precedence)**
-   - Operates strictly on video cards in Home, Subscriptions, Search, and Watch sidebar (`ytd-rich-item-renderer`, `ytd-video-renderer`, `ytd-compact-video-renderer`, `ytd-grid-video-renderer`, `yt-lockup-view-model`). Main video player is never hidden.
-   - **Hydration-Proof Evaluation:** YouTube renders modern video cards in two phases (title first, then channel name/handle 50–200ms later). Cards are guarded and only marked as evaluated once their channel metadata has fully hydrated, preventing blocked channels from slipping through.
-   - Evaluation order:
-     1. **Blocked Channels & Collaborations (High Priority):**
-        - If a channel is blocked, ANY video it collaborates on, co-authors, or is featured in is immediately hidden!
-        - Scans primary channel names, avatar links (`a#avatar-link`), channel handles (`@handle`), joint bylines (`"PJ Explained and PJ"`, `"Creator A & Creator B"`, `"A x B"`), multiple channel links/elements on the card, video titles (`"ft. Channel"`, `"feat. Channel"`, `"with Channel"`, `"w/ Channel"`, or distinctive channel names in the title), and card snippets.
-     2. **Always-Allow Channels (Primitive / Supreme Override):**
-        - Videos from these channels are shown immediately. Overrides Shorts blocker, custom blocked keywords, and topic fields.
-        - Allowed channels' Shorts are permitted to play on `youtube.com/shorts/*` even when the background Shorts Blocker is active.
-        - **Override Example:** If you set the *Entertainment* field to **Block**, but put an entertainment creator in **Always-Allow Channels**, that creator's videos will still be shown!
-     3. **Shorts Blocker (for non-allowed channels):** Hides Shorts cards and shelves.
-     4. **Custom Blocked Keywords:** Word-boundary matching (`\b`) ensures short words like `"ass"` do not match `"class"`, `"bass"`, or `"classic"`.
-     5. **Field Filter (3-State per Field: `Off` | `Allow` | `Block`):**
-        - Predefined: Science, Technology, Finance, Education, News & Politics, Gaming, Entertainment, Sports, Music, Fitness, Motivation Bluff, Edit Videos, Vlogs, Pranks & Comedy, Gameplays & Streams, Food Vlogs & Mukbang, Drama & Gossip, Clickbait & Speculation, Reactions, Hauls & Unboxing, True Crime & Horror (+ custom fields).
-        - **Channel & Handle Awareness:** Scans a unified index of video titles, channel display names, `@handles`, bylines, and snippets.
-        - **Direct Channel Association:** You can expand any category in the **Fields** tab and add channel handles (e.g. `@creator`) or channel names directly into that field's keywords to tie specific creators to that category.
-        - Non-contradictory logic:
-          - If &ge;1 field is `Allow`: SHOW only if video matches at least one `Allow` field AND zero `Block` fields.
-          - If 0 fields are `Allow`: HIDE if video matches any `Block` field; otherwise SHOW.
-        - Standalone `classifyVideo(title, channelName, fields, metadata)` function.
-        - **Import, Export & Reset:** Export and import fields as JSON, or reset to factory defaults at any time.
-
-3. **Channel & Keyword Management (Mutual Exclusion & Granular Control)**
-   - Supports handles (`@veritasium`), full URLs (`https://youtube.com/@veritasium/videos`), channel IDs (`/channel/UC...`), and display names (`Veritasium`).
-   - **Strict Mutual Exclusion:** A channel cannot exist in both Always-Allow and Blocked lists simultaneously. You cannot add a channel to Blocked if it is in Always-Allow (and vice versa) unless removed from the other list first.
-   - **Conflict-Safe Importing:** Importing channels skips any that already exist in the opposing list and notifies you of skipped conflicts.
-   - **1-Click Swap (`⇄`):** Safely moves an existing channel between Always-Allow and Blocked lists with a single click.
-   - **Individual Checkbox Toggles:** Temporarily disable or re-enable any allowed channel, blocked channel, or keyword with a single checkbox click without deleting it.
-   - **Granular Import & Export:** Dedicated import and export for Always-Allow Channels, Blocked Channels, and Custom Blocked Keywords supporting both `.json` and plain `.txt` (one per line) formats, plus individual list Reset buttons.
-
-4. **Performance, SPA Support & Guardrails**
-   - Centralized `SELECTORS` constant covering both traditional and modern 2024–2026 YouTube view models (`yt-lockup-view-model`).
-   - Debounced `MutationObserver` (150ms) monitoring both whole card insertions and asynchronous channel/byline element & text updates (`ytd-channel-name`, `#channel-name`, `a[href*="/@"]`, and text nodes).
-   - Smart `data-ff-checked` hydration guard: prevents redundant re-scans while ensuring unhydrated cards are never permanently locked before their creator details arrive.
-   - Immediate real-time re-evaluation on `chrome.storage.onChanged` and `yt-navigate-finish`.
-   - **Empty Feed Guard:** If 20+ cards are hidden on Home while fewer than 4 remain visible, shows a dismissible top banner.
-   - **Backup & Restore:** Full configuration export/import via JSON in `chrome.storage.local`.
-
-5. **Multi-Preset Profile Management & Auto-Save Engine**
-   - **Named Preset Profiles:** Save your complete configuration (toggles, 3-state fields, allowed channels, blocked channels, and keywords) as reusable profiles saved locally in your browser.
-   - **Quick Preset Switcher Bar:** Easily select your active preset from anywhere in the popup via the top selector bar.
-   - **Built-in Presets:**
-     - *Deep Focus & Study:* Aggressively blocks distraction topics (entertainment, vlogs, pranks, gaming, gossip), watch suggestions, comments, and Shorts, while allowing educational and science content.
-     - *Minimal Search Only:* Pure search utility mode—hides the entire home feed, watch recommendations, and comments.
-     - *Casual & Balanced:* Blocks video ads and Shorts while keeping suggestions, comments, and topics open for browsing.
-   - **Real-Time Auto-Save:** When an active preset is selected, any tweaks you make across Toggles, Fields, or Lists are automatically saved to that preset in local storage in real time.
-   - **Custom / Unsaved Mode (Free Tweaks):** Select "✨ Custom (Unsaved Changes)" or click "Detach to Custom" to experiment and apply changes to YouTube freely without altering or overwriting any saved preset.
-   - **Import & Export:** Export individual presets or your entire preset library as `.json` files to share across devices or backup your setups.
-   - **Rename & Delete:** Easily rename or delete custom profiles.
+This repository contains **two separate versions**:
+1. **Desktop Browser Extension** (Chrome / Brave / Edge / Chromium Manifest V3) — located in [`extension/`](./extension/).
+2. **Android Application** (Filtered In-App Browser + System App/Browser Shield) — located in [`android-app/`](./android-app/).
 
 ---
 
-## Installation Steps (Brave / Chrome)
+## Repository Structure
 
-1. Open Brave (or Chrome).
-2. Navigate to `brave://extensions/` (or `chrome://extensions/`) in the address bar.
-3. Enable **Developer mode** using the toggle switch in the top right corner.
-4. Click the **Load unpacked** button in the top left corner.
-5. Select the project folder:
-   ```
-   /Users/birjeshkhatana/PROJECTS/youtube_extension
-   ```
-6. The **FocusFeed** icon will appear in your browser toolbar. Pin it for quick access.
-7. **To Use in Private / Incognito Mode:**
-   - In `brave://extensions/`, click **Details** on the FocusFeed extension card.
-   - Scroll down to **"Allow in Private"** (or **"Allow in Incognito"**) and flip the switch **ON**.
-   - With `"incognito": "spanning"` enabled, FocusFeed seamlessly filters feeds, skips ads, and enforces your rules in private browsing!
-8. Open [https://www.youtube.com](https://www.youtube.com) and test the filter toggles, channel lists, and topic fields!
+```text
+youtube-extension/
+├── README.md                  # This documentation
+│
+├── extension/                 # Manifest V3 Desktop Browser Extension
+│   ├── manifest.json
+│   ├── defaults.js
+│   ├── content.js
+│   ├── styles.css
+│   ├── popup.html
+│   ├── popup.css
+│   ├── popup.js
+│   └── icons/
+│       ├── icon16.png
+│       ├── icon32.png
+│       ├── icon48.png
+│       └── icon128.png
+│
+└── android-app/               # Standalone Android Gradle/Kotlin Project
+    ├── README.md
+    ├── build.gradle.kts
+    ├── settings.gradle.kts
+    ├── gradle.properties
+    └── app/
+        ├── build.gradle.kts
+        └── src/main/
+            ├── AndroidManifest.xml
+            ├── assets/        # Android-adapted filter engine & settings UI
+            ├── java/com/focusfeed/app/
+            └── res/
+```
+
+---
+
+## Compatibility Matrix (OS & Browsers)
+
+### 1. Desktop Browser Extension
+| Component | Compatibility |
+| :--- | :--- |
+| **Operating Systems** | **Windows** (10/11), **macOS**, **Linux**, **ChromeOS** |
+| **Supported Browsers** | **Google Chrome**, **Brave**, **Microsoft Edge**, **Vivaldi**, **Opera**, **Arc**, and other Chromium-based desktop browsers supporting **Manifest V3** |
+| **Incognito / Private Mode** | Supported (`"incognito": "spanning"`) once enabled per browser instructions |
+| **Not Supported** | Mobile Chrome/Safari, iOS browsers, Desktop Safari, Mozilla Firefox (uses MV3 Chromium APIs) |
+
+### 2. Android Application (`android-app/`)
+| Component | Compatibility |
+| :--- | :--- |
+| **Operating System** | **Android 8.0 Oreo (API 26)** through **Android 15 (API 34+)** |
+| **In-App Filtered Player** | Built-in Chromium-based Android `WebView` (`m.youtube.com` & desktop `youtube.com`) |
+| **Official YouTube App Shield** | Official YouTube Android App (`com.google.android.youtube`) via Android `AccessibilityService` |
+| **External Mobile Browsers Guarded** | **Chrome**, **Brave**, **Firefox**, **Microsoft Edge**, **Samsung Internet**, **Opera**, **DuckDuckGo** on Android |
+| **Not Supported** | iOS / iPadOS |
+
+---
+
+## Exact Capabilities: What Each Version Can Do
+
+| Feature | Desktop Extension | Android App (In-App Player) | Android Accessibility Shield (External YouTube App / Browsers) |
+| :--- | :---: | :---: | :---: |
+| **Shorts Blocker** (Shelves, Cards, Nav Tabs, `/shorts/` Redirect) | Full | Full | Closes Shorts player in YouTube app |
+| **Only Search Mode** (Clear Home Recommendation Feed) | Full | Full | N/A *(use In-App Player)* |
+| **Block Watch Suggestions** (Sidebar, Related Feed, End-Screens) | Full | Full | N/A *(use In-App Player)* |
+| **Comments & Live Chat Blocker** | Full | Full | N/A *(use In-App Player)* |
+| **Auto-Skip Video Ads** | Full (Button + Unskippable Seek) | Full (Button + Unskippable Seek) | Auto-taps visible "Skip / Skip Ad" buttons |
+| **Ad Fast-Forward & Auto-Mute** (2x, 4x, 8x, 16x) | Full | Full | N/A *(use In-App Player)* |
+| **Blocked Channels & Collaboration Detection** | Full (Byline, Avatar, `@handle`, Title, Snippet) | Full | N/A *(use In-App Player)* |
+| **Always-Allow Channels (Supreme Override)** | Full (Overrides Categories, Keywords & Shorts) | Full | N/A *(use In-App Player)* |
+| **Custom Blocked Keywords** (Word-Boundary Safe) | Full | Full | N/A *(use In-App Player)* |
+| **3-State Topic Fields** (`Off` \| `Allow` \| `Block` + `@handle` match) | Full | Full | N/A *(use In-App Player)* |
+| **Named Presets, Auto-Save & Custom Unsaved Mode** | Full | Full | N/A *(use In-App Player)* |
+| **Import / Export (`.json` & `.txt` Cross-Compatible)** | Full | Full (via Android Document Picker) | N/A |
+| **Block Official YouTube App Completely** | N/A | N/A | Full (Closes YouTube app & opens FocusFeed) |
+| **Intercept YouTube Links in Mobile Browsers** | N/A | Full (Deep Links) | Full (Redirects browser `youtube.com` to FocusFeed) |
+
+> **Why Android Uses Both an In-App Player and an Accessibility Shield:**  
+> On unrooted Android devices, security sandboxing prevents any third-party app from injecting CSS/JavaScript into the official YouTube APK (`com.google.android.youtube`) or external mobile browser tabs. Therefore, **full feed/channel/keyword/topic filtering** runs inside FocusFeed's integrated `WebView` player, while the **Accessibility Shield** blocks or redirects the official YouTube app and mobile browser tabs so you cannot accidentally bypass your filters.
+
+---
+
+## How to Use FocusFeed (Both Versions)
+
+### 1. Precedence Order (What Overrides What)
+Video cards are evaluated strictly from top to bottom:
+1. **Blocked Channels & Collaborations (Highest Channel Block):** Hides any video by a blocked creator, including joint collaborations (e.g., `"Creator A and Creator B"`), avatar/channel links, title mentions (`ft.`, `with`, `@handle`), and description snippets.
+2. **Always-Allow Channels (Supreme Override):** Overrides **Blocked Categories**, **Blocked Keywords**, and the **Shorts Blocker**. Creators here always appear and can even play Shorts while the Shorts Blocker is active. *(Mutually exclusive with Blocked Channels—a channel cannot be in both lists at the same time.)*
+3. **Shorts Blocker:** Hides Shorts cards, shelves, navigation tabs, and redirects `/shorts/*` URLs for non-allowed channels.
+4. **Custom Blocked Keywords:** Hides videos containing exact whole words (`\b` boundary safe, so blocking `"ass"` never blocks `"class"`).
+5. **Topic Categories (3-State Fields):**
+   - **Off:** Neutral—no filtering for this category.
+   - **Allow:** Strict whitelist mode—only videos matching at least one `Allow` topic (and zero `Block` topics) are shown.
+   - **Block:** Hides any video matching this topic.
+   - **Tip:** Expand any field (✏️) to add `@channel` handles or creator names directly into that category.
+
+### 2. Multi-Preset Profiles & Custom Mode
+- **Switch Presets:** Use the top **🎛️ Preset** bar or the **Presets** tab to switch between built-in profiles (*Deep Focus & Study*, *Minimal Search Only*, *Casual & Balanced*) or your own saved profiles.
+- **Auto-Save:** While a preset is active, any change you make in Toggles, Fields, or Lists automatically saves to that preset locally.
+- **Custom / Unsaved Mode:** Select **"✨ Custom (Unsaved Changes)"** or tap **Detach to Custom** to experiment freely—your changes apply live to YouTube without modifying or overwriting any saved preset.
+
+### 3. Sharing Rules Between Desktop & Android
+- Open **Lists**, **Fields**, or **Presets** -> tap **Export** to save a `.json` file.
+- Transfer that `.json` file to your other device and tap **Import** to sync your exact setup offline.
+
+---
+
+## Desktop Browser Extension: Install, Update & Uninstall
+
+### Install (Unpacked in Chrome / Brave / Edge)
+1. Open **Brave** (`brave://extensions/`), **Chrome** (`chrome://extensions/`), or **Edge** (`edge://extensions/`).
+2. Enable **Developer mode** (toggle in the top-right corner).
+3. Click **Load unpacked**.
+4. Select the `extension/` folder containing `manifest.json` (`/Users/birjeshkhatana/PROJECTS/youtube-extension/extension`).
+5. Pin the **FocusFeed** icon in your toolbar.
+
+### Enable in Private / Incognito Mode
+1. On the extensions page, click **Details** on the **FocusFeed** card.
+2. Toggle **Allow in Private** (Brave) / **Allow in Incognito** (Chrome) **ON**.
+
+### Uninstall (Browser Extension)
+1. Go to `brave://extensions/` (or `chrome://extensions/`).
+2. Find **FocusFeed - YouTube Feed & Distraction Filter**.
+3. Click **Remove** and confirm. All local extension settings are deleted automatically.
+
+---
+
+## Android App (`android-app/`): Build, Install, Setup & Uninstall
+
+### Build & Install the APK
+1. Open **Android Studio** -> **Open** -> choose `/Users/birjeshkhatana/PROJECTS/youtube-extension/android-app`.
+   *(Or from a terminal with Android SDK & Gradle installed: `cd android-app && gradle assembleDebug`.)*
+2. Click **Build -> Build Bundle(s) / APK(s) -> Build APK(s)** to generate `app/build/outputs/apk/debug/app-debug.apk`.
+3. Transfer `app-debug.apk` to your Android phone and tap it to install (grant **Install unknown apps** permission if prompted).
+
+### Setup In-App Filters & Accessibility Shield
+1. Open **FocusFeed** on your Android phone—YouTube (`m.youtube.com`) loads immediately with filtering active.
+2. Tap **⚙️ Rules** in the top bar to configure Toggles, Topic Fields, Channel Lists, and Presets.
+3. Tap **🛡️ Shield** in the top bar to configure system-wide blocking:
+   - Tap **Enable Accessibility Shield** -> find **FocusFeed YouTube App & Browser Shield** in Android's Installed Services -> turn **ON**.
+   - Choose your preferred protections:
+     - **Block Official YouTube App (Redirect)**
+     - **Block Shorts Inside YouTube App**
+     - **Auto-Tap 'Skip Ad' in YouTube App**
+     - **Block YouTube Website in Mobile Browsers**
+4. *(Optional)* In Android **Settings -> Apps -> Default apps -> Opening links**, set **FocusFeed** to open `youtube.com` and `youtu.be` links automatically.
+
+### Uninstall (Android App)
+1. *(If Shield was enabled)* Open Android **Settings -> Accessibility** and turn **FocusFeed** **OFF** (optional; uninstalling also disables it).
+2. Long-press the **FocusFeed** app icon on your Android home screen/app drawer -> tap **Uninstall** (or go to **Settings -> Apps -> FocusFeed -> Uninstall**).

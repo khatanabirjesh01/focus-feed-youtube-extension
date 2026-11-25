@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FocusFeed Settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="6"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <line x1="12" y1="2" x2="12" y2="4"></line>
+            <line x1="12" y1="20" x2="12" y2="22"></line>
+            <line x1="2" y1="12" x2="4" y2="12"></line>
+            <line x1="20" y1="12" x2="22" y2="12"></line>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <h1>FocusFeed</h1>
+          <span class="version-badge">Android v1.0</span>
+        </div>
+      </div>
+      <div class="header-master-toggle">
+        <label class="switch" title="Globally Enable / Disable FocusFeed">
+          <input type="checkbox" id="master-toggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </header>
+
+    <!-- Quick Preset Bar -->
+    <div class="quick-preset-bar">
+      <div class="preset-select-wrapper">
+        <label for="quick-preset-select" class="preset-label">🎛️ Preset:</label>
+        <select id="quick-preset-select" class="preset-select" title="Switch active preset or select Custom mode">
+          <option value="">✨ Custom (Unsaved Changes)</option>
+        </select>
+      </div>
+      <div class="preset-status-pill custom" id="preset-status-indicator" title="Preset Status">
+        Custom
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="toggles">
+        <span class="tab-icon">⚡</span>
+        <span>Toggles</span>
+      </button>
+      <button class="tab-btn" data-tab="fields">
+        <span class="tab-icon">🏷️</span>
+        <span>Fields</span>
+      </button>
+      <button class="tab-btn" data-tab="lists">
+        <span class="tab-icon">📋</span>
+        <span>Lists</span>
+      </button>
+      <button class="tab-btn" data-tab="presets">
+        <span class="tab-icon">🎛️</span>
+        <span>Presets</span>
+      </button>
+    </nav>
+
+    <!-- Main Tab Content Area -->
+    <main class="content-body">
+      <!-- TAB 1: TOGGLES -->
+      <section id="tab-toggles" class="tab-pane active">
+        <div class="stats-card">
+          <div class="stats-header">
+            <div class="stats-title-group">
+              <span class="live-dot" id="tab-status-dot"></span>
+              <span class="stats-title" id="tab-status-title">Current YouTube Feed</span>
+            </div>
+            <button id="refresh-stats-btn" class="icon-btn" title="Refresh Live Counts">🔄</button>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-box filtered">
+              <div class="stat-number" id="stat-hidden-count">0</div>
+              <div class="stat-label">Videos Filtered</div>
+            </div>
+            <div class="stat-box visible">
+              <div class="stat-number" id="stat-visible-count">0</div>
+              <div class="stat-label">Videos Visible</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="master-status-card" id="master-status-card">
+          <div class="master-status-text">
+            <strong>FocusFeed Master Switch: <span id="master-status-text">Active</span></strong>
+            <p id="master-status-sub">Turns all filters on or off globally. When paused, YouTube is shown completely unrestricted.</p>
+          </div>
+        </div>
+
+        <div class="toggles-list">
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Shorts Blocker</span>
+                <span class="badge badge-accent">Override</span>
+              </div>
+              <p class="toggle-desc">Hides Shorts shelves, cards, and navigation tabs, and redirects /shorts URLs. Channels in your Always-Allow list can still play Shorts.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-shorts">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Only Search</span>
+                <span class="badge badge-accent">Clean Home</span>
+              </div>
+              <p class="toggle-desc">Clears the entire home page feed so you are never distracted by recommendations upon opening YouTube.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-only-search">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Block Watch Suggestions</span>
+              </div>
+              <p class="toggle-desc">Hides recommendation feeds below the playing video and end-screen cards. Playing video, title, and channel info remain visible.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-watch-suggestions">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Comments &amp; Live Chat</span>
+              </div>
+              <p class="toggle-desc">Hides comment sections, live stream chat frames, and chat replays to eliminate distractions.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-comments">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Auto-Skip Video Ads</span>
+                <span class="badge badge-accent">Auto</span>
+              </div>
+              <p class="toggle-desc">Detects video ads, taps 'Skip Ad' automatically, and seeks unskippable ads to completion.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-ad-skip">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-title-row">
+                <span class="toggle-name">Ad Fast-Forward</span>
+              </div>
+              <p class="toggle-desc">Accelerates video ads (2x–16x) and mutes ad audio, automatically restoring normal speed and volume when your video resumes.</p>
+            </div>
+            <div class="toggle-right-controls">
+              <select id="select-ad-ff-rate" class="ad-ff-select" title="Fast-forward speed">
+                <option value="2">2x</option>
+                <option value="4" selected>4x</option>
+                <option value="8">8x</option>
+                <option value="16">16x</option>
+              </select>
+              <label class="switch">
+                <input type="checkbox" id="toggle-ad-fast-forward">
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: FIELDS -->
+      <section id="tab-fields" class="tab-pane">
+        <div class="info-callout">
+          <div class="info-callout-icon">💡</div>
+          <div class="info-callout-text">
+            <strong>How Topic Categories Work (3-State Engine):</strong>
+            <div>• <strong>Off:</strong> Neutral—no filtering on this topic.</div>
+            <div>• <strong>Allow (Strict Mode):</strong> Only videos matching at least one 'Allow' topic will show.</div>
+            <div>• <strong>Block:</strong> Any video matching this topic is hidden.</div>
+            <div>• <strong>Channel &amp; Handle Matching:</strong> Expand any field to add channel handles (<code>@creator</code>) or names directly!</div>
+            <div class="override-note">⚡ <strong>Override Rule:</strong> Channels in <strong>Always-Allow Channels</strong> always override category blocks.</div>
+          </div>
+        </div>
+
+        <div class="search-box">
+          <input type="text" id="field-search-input" placeholder="Search fields or keywords...">
+        </div>
+
+        <div class="field-action-bar">
+          <button id="import-fields-btn" class="btn btn-xs btn-secondary"><span>📥</span> Import Fields</button>
+          <button id="export-fields-btn" class="btn btn-xs btn-secondary"><span>📤</span> Export Fields</button>
+          <button id="reset-fields-btn" class="btn btn-xs btn-text-danger"><span>🔄</span> Reset to Defaults</button>
+          <input type="file" id="import-fields-file" accept=".json" style="display: none;">
+        </div>
+
+        <div class="fields-list" id="fields-container"></div>
+
+        <div class="add-custom-field-box">
+          <div class="section-title">Add Custom Field</div>
+          <div class="form-group">
+            <label for="custom-field-name">Field Name</label>
+            <input type="text" id="custom-field-name" placeholder="e.g. Cooking, Photography">
+          </div>
+          <div class="form-group">
+            <label for="custom-field-keywords">Keywords (comma-separated)</label>
+            <input type="text" id="custom-field-keywords" placeholder="e.g. recipe, chef, @creator">
+          </div>
+          <div class="form-group">
+            <label>Initial State</label>
+            <div class="segmented-control" id="custom-field-state">
+              <button type="button" class="seg-btn active" data-state="off">Off</button>
+              <button type="button" class="seg-btn" data-state="allow">Allow</button>
+              <button type="button" class="seg-btn" data-state="block">Block</button>
+            </div>
+          </div>
+          <button id="add-custom-field-btn" class="btn btn-primary full-width">+ Add Field</button>
+        </div>
+      </section>
+
+      <!-- TAB 3: LISTS -->
+      <section id="tab-lists" class="tab-pane">
+        <div class="list-section">
+          <div class="list-section-header">
+            <div class="list-title-group">
+              <span class="list-title">Always-Allow Channels</span>
+              <span class="count-pill" id="allow-channels-count">0</span>
+            </div>
+            <div class="list-actions">
+              <button id="import-allow-channels-btn" class="btn btn-xs btn-secondary">📥 Import</button>
+              <button id="export-allow-channels-btn" class="btn btn-xs btn-secondary">📤 Export</button>
+              <button id="reset-allow-channels-btn" class="btn btn-xs btn-text-danger">🔄 Reset</button>
+              <input type="file" id="import-allow-channels-file" accept=".txt,.json" style="display: none;">
+            </div>
+          </div>
+          <p class="list-desc">
+            ⭐ <strong>Supreme Override (Always Wins):</strong> Overrides blocked categories, blocked keywords, and Shorts blocker. Mutually exclusive with Blocked Channels.
+          </p>
+          <div class="list-input-row">
+            <input type="text" id="allow-channel-input" placeholder="@handle, URL, or channel name">
+            <button id="add-allow-channel-btn" class="btn btn-sm btn-primary">Add</button>
+          </div>
+          <div class="rule-items-container" id="allow-channels-chips"></div>
+        </div>
+
+        <div class="list-section">
+          <div class="list-section-header">
+            <div class="list-title-group">
+              <span class="list-title">Blocked Channels</span>
+              <span class="count-pill" id="blocked-channels-count">0</span>
+            </div>
+            <div class="list-actions">
+              <button id="import-blocked-channels-btn" class="btn btn-xs btn-secondary">📥 Import</button>
+              <button id="export-blocked-channels-btn" class="btn btn-xs btn-secondary">📤 Export</button>
+              <button id="reset-blocked-channels-btn" class="btn btn-xs btn-text-danger">🔄 Reset</button>
+              <input type="file" id="import-blocked-channels-file" accept=".txt,.json" style="display: none;">
+            </div>
+          </div>
+          <p class="list-desc">
+            🚫 <strong>Strict Channel &amp; Collaboration Block:</strong> Hides videos from these channels, including collaborations and title/byline mentions.
+          </p>
+          <div class="list-input-row">
+            <input type="text" id="blocked-channel-input" placeholder="@handle, URL, or channel name">
+            <button id="add-blocked-channel-btn" class="btn btn-sm btn-primary">Add</button>
+          </div>
+          <div class="rule-items-container" id="blocked-channels-chips"></div>
+        </div>
+
+        <div class="list-section">
+          <div class="list-section-header">
+            <div class="list-title-group">
+              <span class="list-title">Custom Blocked Keywords</span>
+              <span class="count-pill" id="blocked-keywords-count">0</span>
+            </div>
+            <div class="list-actions">
+              <button id="import-blocked-keywords-btn" class="btn btn-xs btn-secondary">📥 Import</button>
+              <button id="export-blocked-keywords-btn" class="btn btn-xs btn-secondary">📤 Export</button>
+              <button id="reset-blocked-keywords-btn" class="btn btn-xs btn-text-danger">🔄 Reset</button>
+              <input type="file" id="import-blocked-keywords-file" accept=".txt,.json" style="display: none;">
+            </div>
+          </div>
+          <p class="list-desc">
+            🔤 <strong>Keyword Filter:</strong> Hides videos containing these exact words (word-boundary safe). Always-Allow channels still show.
+          </p>
+          <div class="list-input-row">
+            <input type="text" id="blocked-keyword-input" placeholder="e.g. drama, reaction, gossip">
+            <button id="add-blocked-keyword-btn" class="btn btn-sm btn-primary">Add</button>
+          </div>
+          <div class="rule-items-container" id="blocked-keywords-chips"></div>
+        </div>
+
+        <div class="list-section backup-section">
+          <div class="list-title">Backup &amp; Restore</div>
+          <p class="list-desc">Export or restore your full configuration, rules, and custom fields as JSON.</p>
+          <div class="backup-btn-row">
+            <button id="export-json-btn" class="btn btn-secondary"><span>📥</span> Export JSON</button>
+            <button id="import-json-btn" class="btn btn-secondary"><span>📤</span> Import JSON</button>
+            <input type="file" id="import-file-input" accept=".json" style="display: none;">
+          </div>
+          <button id="reset-defaults-btn" class="btn-text-danger">Reset All to Factory Defaults</button>
+        </div>
+      </section>
+
+      <!-- TAB 4: PRESETS -->
+      <section id="tab-presets" class="tab-pane">
+        <div class="preset-active-card">
+          <div class="preset-active-header">
+            <div class="preset-active-title-group">
+              <span class="preset-header-icon">🎛️</span>
+              <div>
+                <strong id="preset-active-name">Custom / Unsaved Changes</strong>
+                <div class="preset-active-sub" id="preset-active-desc">Current tweaks are active on YouTube, but not saved to any preset.</div>
+              </div>
+            </div>
+            <span class="badge" id="preset-active-badge">Custom</span>
+          </div>
+
+          <div class="preset-toggle-row">
+            <div class="preset-toggle-info">
+              <span class="preset-toggle-label">Auto-save changes to active preset</span>
+              <p class="preset-toggle-desc">Automatically saves any tweaks made in Toggles, Fields, or Lists directly to the selected preset.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-preset-autosave" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="preset-detach-row" id="preset-detach-container" style="display: none;">
+            <p class="preset-detach-text">Want to test changes without modifying this preset?</p>
+            <button id="btn-detach-preset" class="btn btn-xs btn-secondary">✨ Detach to Custom (Don't Save)</button>
+          </div>
+        </div>
+
+        <div class="list-section">
+          <div class="list-title">Save Current Settings as New Preset</div>
+          <p class="list-desc">Saves your current toggles, categories, channels, and keywords into a new named profile locally.</p>
+          <div class="list-input-row">
+            <input type="text" id="new-preset-name-input" placeholder="e.g. Work Hours, Study, Gaming Setup">
+            <button id="btn-save-new-preset" class="btn btn-sm btn-primary">Save Preset</button>
+          </div>
+        </div>
+
+        <div class="list-section">
+          <div class="list-section-header">
+            <span class="list-title">Preset Library Actions</span>
+            <div class="list-actions">
+              <button id="btn-import-preset" class="btn btn-xs btn-secondary">📥 Import</button>
+              <button id="btn-export-all-presets" class="btn btn-xs btn-secondary">📤 Export All</button>
+              <input type="file" id="import-preset-file-input" accept=".json" style="display: none;">
+            </div>
+          </div>
+          <p class="list-desc">Import or export your preset library as JSON.</p>
+        </div>
+
+        <div class="list-section">
+          <div class="list-section-header">
+            <div class="list-title-group">
+              <span class="list-title">Saved Presets</span>
+              <span class="count-pill" id="presets-count">0</span>
+            </div>
+          </div>
+          <p class="list-desc">Tap <strong>Activate</strong> on any preset to switch immediately.</p>
+          <div id="presets-cards-container" class="presets-cards-container"></div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast">Action completed</div>
+  </div>
+
+  <!-- Android Bridge MUST load before defaults.js and popup.js -->
+  <script src="android-bridge.js"></script>
+  <script src="defaults.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
