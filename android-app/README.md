@@ -1,61 +1,35 @@
-# FocusFeed Android (YouTube App, Website & Mobile Browser Blocker)
+# FocusFeed Shield (Lightweight Official YouTube App Guard)
 
-An Android application bringing the complete **FocusFeed** Chrome Extension filtering engine to Android devices, paired with a native Android **App & Website Shield (`AccessibilityService`)**.
-
----
-
-## What This App Does
-
-### 1. Filtered YouTube Experience (Full Feature Parity)
-Built into `MainActivity` (`WebView` targeting `m.youtube.com` with full fullscreen video playback & SPA navigation support):
-- **Shorts Blocker:** Hides mobile `ytm-*` & desktop `ytd-*` Shorts shelves, pivot tabs, cards, and redirects `/shorts/*` (except creators in **Always-Allow**).
-- **Only Search Mode:** Clears the YouTube home recommendation feed to show a clean search-focused view.
-- **Block Watch Suggestions:** Hides sidebar, bottom related videos, chip bars, and player end-screen recommendations while keeping the playing video, title, channel, and description untouched.
-- **Comments & Live Chat Blocker:** Hides comments sections and live chat frames.
-- **Auto-Skip & Fast-Forward Ads:** Auto-taps "Skip Ad", seeks unskippable video ads to completion, or accelerates ad playback (2x–16x) with auto-mute.
-- **Channel & Collaboration Blocking:** Blocks primary channels, avatars, handles (`@creator`), joint bylines, title mentions, and snippets.
-- **Always-Allow Supreme Override:** Overrides category blocks, keywords, and Shorts blocker (mutually exclusive with Blocked Channels).
-- **3-State Topic Fields:** `Off` | `Allow` | `Block` across 20+ built-in categories + custom fields, supporting `@handle` and channel name keywords.
-- **Multi-Preset Auto-Save & Custom Mode:** Save named presets locally, auto-save tweaks to the active preset, detach to Custom Mode, and Import/Export `.json` & `.txt` backups via Android's native document picker.
-
-### 2. App & Website Shield (`YouTubeBlockerAccessibilityService`)
-Configurable inside **🛡️ Shield** (`SystemBlockerActivity`) once enabled in Android Accessibility Settings:
-- **Block Official YouTube App Completely:** Closes `com.google.android.youtube` immediately and opens FocusFeed's filtered YouTube browser instead.
-- **Block Shorts Inside Official YouTube App:** If you leave the YouTube app enabled, automatically detects when a Shorts player opens inside `com.google.android.youtube` and closes it (`GLOBAL_ACTION_BACK`).
-- **Auto-Tap "Skip Ad" Inside Official YouTube App:** Automatically clicks visible "Skip" / "Skip Ad" buttons inside `com.google.android.youtube`.
-- **Block & Redirect YouTube in Mobile Browsers:** Intercepts `youtube.com` / `youtu.be` URLs in Chrome, Brave, Firefox, Edge, Samsung Internet, Opera, and DuckDuckGo, redirecting them straight into FocusFeed's filtered player.
-- **Deep Link Handler:** Lets you choose **FocusFeed** when tapping any `youtube.com` or `youtu.be` link on Android.
-
-> **Important Android Platform Note:** Unrooted Android does not allow external apps to inject CSS/JS into the official YouTube binary (`com.google.android.youtube`). Therefore, granular per-channel, keyword, and topic-field feed filtering operates inside FocusFeed's filtered player (`MainActivity`), while the Accessibility Shield protects you from bypassing it via the official YouTube app or mobile browsers.
+A lightweight, 100% offline Android companion app (`AccessibilityService` + `TYPE_ACCESSIBILITY_OVERLAY`) built strictly for the **official YouTube Android app (`com.google.android.youtube`)** with zero WebViews and zero external UI dependencies.
 
 ---
 
-## Project Structure
+## Features That Reliably Work Inside the Official YouTube App
 
-- `app/src/main/java/com/focusfeed/app/`
-  - `MainActivity.kt` — Filtered YouTube `WebView` player, fullscreen video support, deep link handling, and early CSS/JS injection.
-  - `SettingsActivity.kt` — Hosts the full FocusFeed UI (`popup.html`) with Android file Import/Export pickers.
-  - `SystemBlockerActivity.kt` — Native controls for YouTube App & External Browser blocking.
-  - `YouTubeBlockerAccessibilityService.kt` — On-device Accessibility Guard.
-  - `ConfigRepository.kt` & `FocusFeedJsBridge.kt` — Local `SharedPreferences` JSON storage and WebView bridge.
-- `app/src/main/assets/`
-  - `android-bridge.js`, `defaults.js`, `styles-android.css`, `content-android.js`, `popup.html`, `popup.css`, `popup.js`
+1. **Block YouTube Shorts:** Masks the Shorts bottom navigation tab and immediately exits any Shorts player opened inside YouTube.
+2. **Only Search Mode (Hide Home Feed):** Covers the Home recommendation feed while keeping YouTube's Search bar, Search results, Subscriptions, and Watch playback accessible.
+3. **Auto-Tap "Skip Ad":** Automatically taps visible `"Skip"` / `"Skip Ad"` buttons in the YouTube player.
+4. **Auto-Mute Video Ads:** Optionally mutes media audio during ads and restores sound when playback resumes.
+5. **Block Comments & Live Chat:** Auto-closes opened Comments or Live Chat drawers.
+6. **Cancel "Up Next" Autoplay:** Automatically taps Cancel on the Up Next countdown overlay.
+7. **Hide Watch Suggestions Below Video:** Covers the related-videos feed below the video header while watching (includes a **Peek 15s** button).
+8. **1-Tap Quick Modes:** *Strict Focus*, *Clean Watch*, and *Shorts & Ads*.
 
 ---
 
-## How to Build the Downloadable APK
+## Which File to Install on Your Phone
 
-### Option 1: Android Studio (Recommended)
-1. Open **Android Studio** -> **Open** -> select `/Users/birjeshkhatana/PROJECTS/youtube-extension/android-app`.
-2. Let Gradle sync download dependencies (`compileSdk 34`, `minSdk 26`).
-3. Click **Build -> Build Bundle(s) / APK(s) -> Build APK(s)**.
-4. Copy the generated APK from:
-   `app/build/outputs/apk/debug/app-debug.apk`
-   to your Android phone and install it (allow "Install unknown apps" when prompted).
+Copy **only the single `.apk` file** (not the `android-app/` folder):
+- **`FocusFeed-Shield.apk`** (release-signed with v1+v2+v3 schemes, `minSdk 24` / Android 7.0+)
 
-### Option 2: Command Line (with Android SDK & Gradle installed)
+If an older debug build (`com.focusfeed.app.debug`) was previously installed, uninstall it first before installing `FocusFeed-Shield.apk` (`com.focusfeed.shield`).
+
+---
+
+## Build & Test
+
 ```bash
-cd /Users/birjeshkhatana/PROJECTS/youtube-extension/android-app
-gradle assembleDebug
-# Output APK: app/build/outputs/apk/debug/app-debug.apk
+cd android-app
+gradle testDebugUnitTest assembleRelease
+# Output APK: app/build/outputs/apk/release/app-release.apk
 ```

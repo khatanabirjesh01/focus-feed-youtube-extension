@@ -1,7 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FocusFeed</string>
-    <string name="title_settings">Filter Settings</string>
-    <string name="title_system_blocker">App &amp; Website Shield</string>
-    <string name="accessibility_service_label">FocusFeed YouTube App &amp; Browser Shield</string>
-    <string name="accessibility_service_description">Allows FocusFeed to block the official YouTube app, block Shorts inside the YouTube app, auto-tap Skip Ad, and redirect external browser YouTube pages into FocusFeed\'s filtered player. Runs 100% offline on-device with zero data collection.</string>
+    <string name="app_name">FocusFeed Shield</string>
+    <string name="accessibility_service_label">FocusFeed YouTube App Shield</string>
+    <string name="accessibility_service_description">Lightweight offline guard for the official YouTube Android app: blocks Shorts, enforces Search-Only mode on Home, auto-taps Skip Ad, mutes video ads, blocks Comments/Live Chat, and stops Up Next autoplay. Zero data collection.</string>
 </resources>

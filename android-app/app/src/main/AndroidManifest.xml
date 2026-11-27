@@ -2,8 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <queries>
+        <package android:name="com.google.android.youtube" />
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -12,49 +13,21 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.FocusFeed"
-        android:usesCleartextTraffic="false"
         tools:targetApi="34">
 
-        <!-- Main Filtered YouTube Browser Activity -->
+        <!-- FocusFeed YouTube App Shield Configuration & Dashboard -->
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
             android:exported="true"
-            android:launchMode="singleTop">
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
-            <!-- Handle YouTube Links (Open inside FocusFeed Filtered Browser) -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" />
-                <data android:scheme="http" />
-                <data android:host="youtube.com" />
-                <data android:host="www.youtube.com" />
-                <data android:host="m.youtube.com" />
-                <data android:host="youtu.be" />
-            </intent-filter>
         </activity>
 
-        <!-- Full FocusFeed Settings Activity (Toggles, Fields, Lists, Presets) -->
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="false"
-            android:label="@string/title_settings"
-            android:parentActivityName=".MainActivity" />
-
-        <!-- Native Android YouTube App & External Browser Blocker Settings -->
-        <activity
-            android:name=".SystemBlockerActivity"
-            android:exported="false"
-            android:label="@string/title_system_blocker"
-            android:parentActivityName=".MainActivity" />
-
-        <!-- Accessibility Service to Block Official YouTube App / Shorts / Browser YouTube -->
+        <!-- Accessibility Service Guarding Official YouTube App (com.google.android.youtube) -->
         <service
             android:name=".YouTubeBlockerAccessibilityService"
             android:exported="true"

@@ -1,313 +1,320 @@
 package com.focusfeed.app
 
-import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.ComponentName
 import android.content.Intent
-import android.graphics.Bitmap
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.util.Base64
+import android.provider.Settings
+import android.text.TextUtils
 import android.view.View
-import android.webkit.CookieManager
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.FrameLayout
-import android.widget.ProgressBar
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.Switch
 import android.widget.TextView
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
+import android.widget.Toast
+import com.focusfeed.app.service.YouTubeNodeInspector
 
 /**
- * Main Activity hosting the distraction-free FocusFeed YouTube WebView browser.
- * Injects CSS-first Layer 1 rules and the real-time Layer 2 JS engine at document start & finish.
+ * Lightweight, zero-bloat single-screen dashboard for FocusFeed YouTube App Shield.
  */
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
-    companion object {
-        const val EXTRA_TARGET_URL = "extra_target_url"
-        private const val HOME_URL = "https://m.youtube.com/"
+    private lateinit var tvHeaderStatus: TextView
+    private lateinit var cardSetup: LinearLayout
+    private lateinit var tvServiceTitle: TextView
+    private lateinit var tvServiceDesc: TextView
+    private lateinit var tvRestrictedHint: TextView
+    private lateinit var btnAccessibility: Button
+
+    private lateinit var switchMaster: Switch
+    private lateinit var tvMasterSub: TextView
+
+    private lateinit var tvStatShorts: TextView
+    private lateinit var tvStatAds: TextView
+    private lateinit var tvStatComments: TextView
+    private lateinit var tvStatAutoplay: TextView
+
+    private lateinit var switchBlockShorts: Switch
+    private lateinit var switchOnlySearch: Switch
+    private lateinit var switchAdSkip: Switch
+    private lateinit var switchAdMute: Switch
+    private lateinit var switchBlockComments: Switch
+    private lateinit var switchCancelAutoplay: Switch
+    private lateinit var switchHideWatchSuggestions: Switch
+
+    private var isBindingUi = false
+
+    private val repoListener: () -> Unit = {
+        runOnUiThread { bindState() }
     }
 
-    private lateinit var webView: WebView
-    private lateinit var progressBar: ProgressBar
-    private lateinit var tvFilterStats: TextView
-    private lateinit var fullscreenContainer: FrameLayout
-
-    private var customView: View? = null
-    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
-
-    private val settingsLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        // Instantly apply any changed rules/presets to the live WebView without reloading video
-        reloadRulesInWebView()
-    }
-
-    private val cachedCssBase64: String by lazy {
-        val cssText = assets.open("styles-android.css").bufferedReader().use { it.readText() }
-        Base64.encodeToString(cssText.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-    }
-
-    private val cachedBridgeJs: String by lazy {
-        assets.open("android-bridge.js").bufferedReader().use { it.readText() }
-    }
-
-    private val cachedDefaultsJs: String by lazy {
-        assets.open("defaults.js").bufferedReader().use { it.readText() }
-    }
-
-    private val cachedContentJs: String by lazy {
-        assets.open("content-android.js").bufferedReader().use { it.readText() }
-    }
-
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        webView = findViewById(R.id.youtubeWebView)
-        progressBar = findViewById(R.id.pageProgressBar)
-        tvFilterStats = findViewById(R.id.tvFilterStats)
-        fullscreenContainer = findViewById(R.id.fullscreenContainer)
+        tvHeaderStatus = findViewById(R.id.tvHeaderStatus)
+        cardSetup = findViewById(R.id.cardSetup)
+        tvServiceTitle = findViewById(R.id.tvServiceTitle)
+        tvServiceDesc = findViewById(R.id.tvServiceDesc)
+        tvRestrictedHint = findViewById(R.id.tvRestrictedHint)
+        btnAccessibility = findViewById(R.id.btnAccessibilitySettings)
 
-        setupToolbarButtons()
-        setupWebView()
-        setupBackNavigation()
+        switchMaster = findViewById(R.id.switchMaster)
+        tvMasterSub = findViewById(R.id.tvMasterSub)
 
-        val initialUrl = extractTargetUrl(intent) ?: HOME_URL
-        webView.loadUrl(initialUrl)
-    }
+        tvStatShorts = findViewById(R.id.tvStatShorts)
+        tvStatAds = findViewById(R.id.tvStatAds)
+        tvStatComments = findViewById(R.id.tvStatComments)
+        tvStatAutoplay = findViewById(R.id.tvStatAutoplay)
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        val newUrl = extractTargetUrl(intent)
-        if (!newUrl.isNullOrBlank()) {
-            webView.loadUrl(newUrl)
+        switchBlockShorts = findViewById(R.id.switchBlockShorts)
+        switchOnlySearch = findViewById(R.id.switchOnlySearch)
+        switchAdSkip = findViewById(R.id.switchAdSkip)
+        switchAdMute = findViewById(R.id.switchAdMute)
+        switchBlockComments = findViewById(R.id.switchBlockComments)
+        switchCancelAutoplay = findViewById(R.id.switchCancelAutoplay)
+        switchHideWatchSuggestions = findViewById(R.id.switchHideWatchSuggestions)
+
+        findViewById<Button>(R.id.btnOpenYouTube).setOnClickListener { openOfficialYouTubeApp() }
+        btnAccessibility.setOnClickListener { openAccessibilitySettings() }
+        findViewById<Button>(R.id.btnAppInfo).setOnClickListener { openAppInfoSettings() }
+
+        findViewById<View>(R.id.btnResetStats).setOnClickListener {
+            ConfigRepository.resetStats(this)
+            Toast.makeText(this, "Counters reset", Toast.LENGTH_SHORT).show()
         }
+
+        setupQuickModes()
+        setupSwitchListeners()
+
+        ConfigRepository.addChangeListener(repoListener)
+        bindState()
     }
 
     override fun onResume() {
         super.onResume()
-        reloadRulesInWebView()
-    }
-
-    private fun extractTargetUrl(intent: Intent?): String? {
-        if (intent == null) return null
-        val extra = intent.getStringExtra(EXTRA_TARGET_URL)
-        if (!extra.isNullOrBlank()) return normalizeYouTubeUrl(extra)
-        val data = intent.data
-        if (data != null && isYouTubeUri(data)) {
-            return normalizeYouTubeUrl(data.toString())
-        }
-        return null
-    }
-
-    private fun normalizeYouTubeUrl(rawUrl: String): String {
-        val trimmed = rawUrl.trim()
-        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            trimmed
-        } else {
-            "https://$trimmed"
-        }
-    }
-
-    private fun isYouTubeUri(uri: Uri): Boolean {
-        val host = (uri.host ?: "").lowercase()
-        return host == "youtube.com" ||
-            host.endsWith(".youtube.com") ||
-            host == "youtu.be"
-    }
-
-    private fun isAllowedInAppUri(uri: Uri): Boolean {
-        val host = (uri.host ?: "").lowercase()
-        return isYouTubeUri(uri) ||
-            host == "accounts.google.com" ||
-            host.endsWith(".google.com") ||
-            host == "accounts.youtube.com"
-    }
-
-    private fun setupToolbarButtons() {
-        findViewById<View>(R.id.btnBack).setOnClickListener {
-            if (webView.canGoBack()) {
-                webView.goBack()
-            }
-        }
-
-        findViewById<View>(R.id.btnHome).setOnClickListener {
-            webView.loadUrl(HOME_URL)
-        }
-
-        findViewById<View>(R.id.btnShield).setOnClickListener {
-            startActivity(Intent(this, SystemBlockerActivity::class.java))
-        }
-
-        findViewById<View>(R.id.btnSettings).setOnClickListener {
-            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
-        }
-    }
-
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun setupWebView() {
-        val settings: WebSettings = webView.settings
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.databaseEnabled = true
-        settings.mediaPlaybackRequiresUserGesture = false
-        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-        settings.useWideViewPort = true
-        settings.loadWithOverviewMode = true
-        settings.setSupportZoom(true)
-        settings.builtInZoomControls = true
-        settings.displayZoomControls = false
-
-        CookieManager.getInstance().apply {
-            setAcceptCookie(true)
-            setAcceptThirdPartyCookies(webView, true)
-        }
-
-        val bridge = FocusFeedJsBridge(
-            context = this,
-            onStatsUpdated = { hidden, _ ->
-                runOnUiThread {
-                    tvFilterStats.text = "Active • $hidden filtered"
-                }
-            }
-        )
-        webView.addJavascriptInterface(bridge, "FocusFeedAndroid")
-
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): Boolean {
-                val uri = request?.url ?: return false
-                if (isAllowedInAppUri(uri)) {
-                    return false
-                }
-                // External links open in system browser
-                return try {
-                    startActivity(Intent(Intent.ACTION_VIEW, uri))
-                    true
-                } catch (_: Exception) {
-                    false
-                }
-            }
-
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                super.onPageStarted(view, url, favicon)
-                if (url != null && url.contains("youtube.com", ignoreCase = true)) {
-                    injectFocusFeedEngine(view)
-                }
-            }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                progressBar.visibility = View.GONE
-                if (url != null && url.contains("youtube.com", ignoreCase = true)) {
-                    injectFocusFeedEngine(view)
-                    reloadRulesInWebView()
-                }
-            }
-        }
-
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                if (newProgress < 100) {
-                    progressBar.visibility = View.VISIBLE
-                    progressBar.progress = newProgress
-                } else {
-                    progressBar.visibility = View.GONE
-                }
-                if (newProgress in 15..85) {
-                    val url = view?.url ?: ""
-                    if (url.contains("youtube.com", ignoreCase = true)) {
-                        injectFocusFeedEngine(view)
-                    }
-                }
-            }
-
-            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                if (customView != null) {
-                    callback?.onCustomViewHidden()
-                    return
-                }
-                customView = view
-                customViewCallback = callback
-                fullscreenContainer.addView(view)
-                fullscreenContainer.visibility = View.VISIBLE
-                webView.visibility = View.GONE
-            }
-
-            override fun onHideCustomView() {
-                if (customView == null) return
-                fullscreenContainer.removeView(customView)
-                fullscreenContainer.visibility = View.GONE
-                webView.visibility = View.VISIBLE
-                customView = null
-                customViewCallback?.onCustomViewHidden()
-                customViewCallback = null
-            }
-        }
-    }
-
-    private fun injectFocusFeedEngine(targetWebView: WebView?) {
-        val wv = targetWebView ?: return
-
-        // 1. Inject CSS-first stylesheet synchronously if not yet inserted
-        val cssScript = """
-            (function() {
-              if (!document.documentElement) return;
-              if (!document.getElementById('focusfeed-injected-css')) {
-                var style = document.createElement('style');
-                style.id = 'focusfeed-injected-css';
-                style.textContent = decodeURIComponent(escape(window.atob('$cachedCssBase64')));
-                (document.head || document.documentElement).appendChild(style);
-              }
-            })();
-        """.trimIndent()
-        wv.evaluateJavascript(cssScript, null)
-
-        // 2. Inject Chrome Storage/Runtime Polyfill + Defaults + Content Engine once per document
-        val jsBundle = """
-            (function() {
-              if (window.__ffEngineBootstrapped) return;
-              window.__ffEngineBootstrapped = true;
-              $cachedBridgeJs
-              $cachedDefaultsJs
-              $cachedContentJs
-            })();
-        """.trimIndent()
-        wv.evaluateJavascript(jsBundle, null)
-    }
-
-    private fun reloadRulesInWebView() {
-        webView.evaluateJavascript(
-            "if (window.__ffReloadConfig) { window.__ffReloadConfig(); }",
-            null
-        )
-    }
-
-    private fun setupBackNavigation() {
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (customView != null) {
-                    webView.webChromeClient?.onHideCustomView()
-                } else if (webView.canGoBack()) {
-                    webView.goBack()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                }
-            }
-        })
+        bindState()
     }
 
     override fun onDestroy() {
-        webView.destroy()
+        ConfigRepository.removeChangeListener(repoListener)
         super.onDestroy()
+    }
+
+    private fun setupQuickModes() {
+        findViewById<Button>(R.id.btnModeStrict).setOnClickListener {
+            ConfigRepository.clearSnooze()
+            ConfigRepository.saveConfig(
+                this,
+                ShieldConfig(
+                    enabled = true,
+                    blockShorts = true,
+                    onlySearch = true,
+                    adSkip = true,
+                    adMute = true,
+                    blockComments = true,
+                    cancelAutoplay = true,
+                    hideWatchSuggestions = true
+                )
+            )
+            Toast.makeText(this, "Strict Focus mode applied", Toast.LENGTH_SHORT).show()
+        }
+
+        findViewById<Button>(R.id.btnModeClean).setOnClickListener {
+            ConfigRepository.clearSnooze()
+            ConfigRepository.saveConfig(
+                this,
+                ShieldConfig(
+                    enabled = true,
+                    blockShorts = true,
+                    onlySearch = false,
+                    adSkip = true,
+                    adMute = false,
+                    blockComments = true,
+                    cancelAutoplay = true,
+                    hideWatchSuggestions = false
+                )
+            )
+            Toast.makeText(this, "Clean Watch mode applied", Toast.LENGTH_SHORT).show()
+        }
+
+        findViewById<Button>(R.id.btnModeLite).setOnClickListener {
+            ConfigRepository.clearSnooze()
+            ConfigRepository.saveConfig(
+                this,
+                ShieldConfig(
+                    enabled = true,
+                    blockShorts = true,
+                    onlySearch = false,
+                    adSkip = true,
+                    adMute = false,
+                    blockComments = false,
+                    cancelAutoplay = false,
+                    hideWatchSuggestions = false
+                )
+            )
+            Toast.makeText(this, "Shorts & Ads Only mode applied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupSwitchListeners() {
+        switchMaster.setOnCheckedChangeListener { _, checked ->
+            if (isBindingUi) return@setOnCheckedChangeListener
+            if (checked) ConfigRepository.clearSnooze()
+            ConfigRepository.saveConfig(this, ConfigRepository.getConfig(this).copy(enabled = checked))
+        }
+        switchBlockShorts.setOnCheckedChangeListener { _, checked ->
+            if (isBindingUi) return@setOnCheckedChangeListener
+            ConfigRepository.saveConfig(this, ConfigRepository.getConfig(this).copy(blockShorts = checked))
+        }
+        switchOnlySearch.setOnCheckedChangeListener { _, checked ->
+            if (isBindingUi) return@setOnCheckedChangeListener
+            ConfigRepository.saveConfig(this, ConfigRepository.getConfig(this).copy(onlySearch = checked))
+        }
+        switchAdSkip.setOnCheckedChangeListener { _, checked ->
+            if (isBindingUi) return@setOnCheckedChangeListener
+            ConfigRepository.saveConfig(this, ConfigRepository.getConfig(this).copy(adSkip = checked))
+        }
+        switchAdMute.setOnCheckedChangeListener { _, checked ->
+            if (isBindingUi) return@setOnCheckedChangeListener
+            ConfigRepository.saveConfig(this, ConfigRepository.getConfig(this).copy(adMute = checked))
+        }
+        switchBlockComments.setOnCheckedChangeListener { _, checked ->
+            if (isBindingUi) return@setOnCheckedChangeListener
+            ConfigRepository.saveConfig(this, ConfigRepository.getConfig(this).copy(blockComments = checked))
+        }
+        switchCancelAutoplay.setOnCheckedChangeListener { _, checked ->
+            if (isBindingUi) return@setOnCheckedChangeListener
+            ConfigRepository.saveConfig(this, ConfigRepository.getConfig(this).copy(cancelAutoplay = checked))
+        }
+        switchHideWatchSuggestions.setOnCheckedChangeListener { _, checked ->
+            if (isBindingUi) return@setOnCheckedChangeListener
+            ConfigRepository.saveConfig(this, ConfigRepository.getConfig(this).copy(hideWatchSuggestions = checked))
+        }
+    }
+
+    private fun bindState() {
+        isBindingUi = true
+        try {
+            val serviceEnabled = isAccessibilityServiceEnabled()
+            val cfg = ConfigRepository.getConfig(this)
+            val snoozed = ConfigRepository.isSnoozed()
+
+            val green = Color.parseColor("#22C55E")
+            val amber = Color.parseColor("#F59E0B")
+
+            if (serviceEnabled) {
+                tvServiceTitle.text = "Accessibility Shield: ACTIVE"
+                tvServiceTitle.setTextColor(green)
+                tvServiceDesc.text = "FocusFeed Shield is active on the official YouTube app."
+                btnAccessibility.text = "Accessibility Settings"
+                tvRestrictedHint.visibility = View.GONE
+            } else {
+                tvServiceTitle.text = "Accessibility Shield: SETUP REQUIRED"
+                tvServiceTitle.setTextColor(amber)
+                tvServiceDesc.text = "Turn on 'FocusFeed YouTube App Shield' in Android Accessibility Settings."
+                btnAccessibility.text = "Enable Shield"
+                tvRestrictedHint.visibility = View.VISIBLE
+            }
+
+            when {
+                !serviceEnabled -> {
+                    tvHeaderStatus.text = "Accessibility Shield disabled"
+                    tvHeaderStatus.setTextColor(amber)
+                }
+                !cfg.enabled || snoozed -> {
+                    tvHeaderStatus.text = "Shield paused"
+                    tvHeaderStatus.setTextColor(amber)
+                }
+                else -> {
+                    tvHeaderStatus.text = "Guarding YouTube App"
+                    tvHeaderStatus.setTextColor(green)
+                }
+            }
+
+            switchMaster.isChecked = cfg.enabled && !snoozed
+            when {
+                !cfg.enabled -> {
+                    tvMasterSub.text = "Paused — YouTube app is unrestricted"
+                    tvMasterSub.setTextColor(amber)
+                }
+                snoozed -> {
+                    tvMasterSub.text = "Snoozed — toggle ON to resume now"
+                    tvMasterSub.setTextColor(amber)
+                }
+                else -> {
+                    tvMasterSub.text = "Active on Official YouTube App"
+                    tvMasterSub.setTextColor(green)
+                }
+            }
+
+            switchBlockShorts.isChecked = cfg.blockShorts
+            switchOnlySearch.isChecked = cfg.onlySearch
+            switchAdSkip.isChecked = cfg.adSkip
+            switchAdMute.isChecked = cfg.adMute
+            switchBlockComments.isChecked = cfg.blockComments
+            switchCancelAutoplay.isChecked = cfg.cancelAutoplay
+            switchHideWatchSuggestions.isChecked = cfg.hideWatchSuggestions
+
+            val stats = ConfigRepository.getStats(this)
+            tvStatShorts.text = stats.shortsBlocked.toString()
+            tvStatAds.text = stats.adsSkipped.toString()
+            tvStatComments.text = stats.commentsClosed.toString()
+            tvStatAutoplay.text = stats.autoplayCancelled.toString()
+        } finally {
+            isBindingUi = false
+        }
+    }
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        return try {
+            val expected = ComponentName(this, YouTubeBlockerAccessibilityService::class.java)
+            val enabled = Settings.Secure.getString(
+                contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            ) ?: return false
+
+            val splitter = TextUtils.SimpleStringSplitter(':')
+            splitter.setString(enabled)
+            while (splitter.hasNext()) {
+                val component = ComponentName.unflattenFromString(splitter.next())
+                if (component == expected) return true
+            }
+            false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun openAccessibilitySettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun openAppInfoSettings() {
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", packageName, null)
+            }
+            startActivity(intent)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun openOfficialYouTubeApp() {
+        val launchIntent = packageManager.getLaunchIntentForPackage(YouTubeNodeInspector.YOUTUBE_PACKAGE)
+        if (launchIntent != null) {
+            try {
+                startActivity(launchIntent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Could not launch YouTube: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "Official YouTube app is not installed", Toast.LENGTH_SHORT).show()
+        }
     }
 }

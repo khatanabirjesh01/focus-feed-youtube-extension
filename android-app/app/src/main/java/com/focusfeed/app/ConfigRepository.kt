@@ -2,102 +2,169 @@ package com.focusfeed.app
 
 import android.content.Context
 import android.content.SharedPreferences
-import org.json.JSONObject
+import android.os.SystemClock
+import java.util.concurrent.CopyOnWriteArraySet
+
+data class ShieldConfig(
+    val enabled: Boolean = true,
+    val blockShorts: Boolean = true,
+    val onlySearch: Boolean = false,
+    val adSkip: Boolean = true,
+    val adMute: Boolean = false,
+    val blockComments: Boolean = false,
+    val cancelAutoplay: Boolean = true,
+    val hideWatchSuggestions: Boolean = false
+)
+
+data class ShieldStats(
+    val shortsBlocked: Int = 0,
+    val adsSkipped: Int = 0,
+    val commentsClosed: Int = 0,
+    val autoplayCancelled: Int = 0
+)
 
 /**
- * SharedPreferences-backed repository storing both:
- * 1. FocusFeed Chrome-compatible storage JSON (toggles, fields, lists, presets)
- * 2. Native Android System Shield preferences (YouTube app / Shorts / Browser blocking)
+ * Lightweight, memory-cached SharedPreferences repository for YouTube Shield controls.
  */
 object ConfigRepository {
-    private const val PREFS_NAME = "focusfeed_prefs"
-    private const val KEY_STORAGE_JSON = "focusfeed_storage_json"
 
-    private const val KEY_SHIELD_BLOCK_YT_APP = "shield_block_youtube_app"
-    private const val KEY_SHIELD_BLOCK_YT_SHORTS = "shield_block_youtube_app_shorts"
-    private const val KEY_SHIELD_SKIP_YT_ADS = "shield_skip_youtube_app_ads"
-    private const val KEY_SHIELD_BLOCK_BROWSER_YT = "shield_block_browser_youtube"
+    private const val PREFS_NAME = "focusfeed_shield_lite"
+    private const val KEY_ENABLED = "enabled"
+    private const val KEY_BLOCK_SHORTS = "block_shorts"
+    private const val KEY_ONLY_SEARCH = "only_search"
+    private const val KEY_AD_SKIP = "ad_skip"
+    private const val KEY_AD_MUTE = "ad_mute"
+    private const val KEY_BLOCK_COMMENTS = "block_comments"
+    private const val KEY_CANCEL_AUTOPLAY = "cancel_autoplay"
+    private const val KEY_HIDE_SUGGESTIONS = "hide_watch_suggestions"
+
+    private const val KEY_STAT_SHORTS = "stat_shorts"
+    private const val KEY_STAT_ADS = "stat_ads"
+    private const val KEY_STAT_COMMENTS = "stat_comments"
+    private const val KEY_STAT_AUTOPLAY = "stat_autoplay"
 
     @Volatile
-    var lastHiddenCount: Int = 0
+    private var cachedConfig: ShieldConfig? = null
+
     @Volatile
-    var lastVisibleCount: Int = 0
+    private var snoozeUntilElapsedMs: Long = 0L
+
     @Volatile
-    var lastTotalCards: Int = 0
-    @Volatile
-    var lastUrl: String = "https://m.youtube.com/"
+    private var suggestionsPeekUntilElapsedMs: Long = 0L
+
+    private val listeners = CopyOnWriteArraySet<() -> Unit>()
+
+    fun addChangeListener(listener: () -> Unit) {
+        listeners.add(listener)
+    }
+
+    fun removeChangeListener(listener: () -> Unit) {
+        listeners.remove(listener)
+    }
+
+    private fun notifyListeners() {
+        for (l in listeners) {
+            try {
+                l()
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     private fun prefs(context: Context): SharedPreferences {
         return context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     @Synchronized
-    fun getStorageJson(context: Context): String {
-        return prefs(context).getString(KEY_STORAGE_JSON, "{}") ?: "{}"
+    fun getConfig(context: Context): ShieldConfig {
+        cachedConfig?.let { return it }
+        val p = prefs(context)
+        val loaded = ShieldConfig(
+            enabled = p.getBoolean(KEY_ENABLED, true),
+            blockShorts = p.getBoolean(KEY_BLOCK_SHORTS, true),
+            onlySearch = p.getBoolean(KEY_ONLY_SEARCH, false),
+            adSkip = p.getBoolean(KEY_AD_SKIP, true),
+            adMute = p.getBoolean(KEY_AD_MUTE, false),
+            blockComments = p.getBoolean(KEY_BLOCK_COMMENTS, false),
+            cancelAutoplay = p.getBoolean(KEY_CANCEL_AUTOPLAY, true),
+            hideWatchSuggestions = p.getBoolean(KEY_HIDE_SUGGESTIONS, false)
+        )
+        cachedConfig = loaded
+        return loaded
     }
 
     @Synchronized
-    fun mergeStorageJson(context: Context, patchJsonString: String): String {
-        val currentRaw = getStorageJson(context)
-        val currentObj = try {
-            JSONObject(currentRaw)
-        } catch (_: Exception) {
-            JSONObject()
+    fun saveConfig(context: Context, cfg: ShieldConfig) {
+        cachedConfig = cfg
+        prefs(context).edit()
+            .putBoolean(KEY_ENABLED, cfg.enabled)
+            .putBoolean(KEY_BLOCK_SHORTS, cfg.blockShorts)
+            .putBoolean(KEY_ONLY_SEARCH, cfg.onlySearch)
+            .putBoolean(KEY_AD_SKIP, cfg.adSkip)
+            .putBoolean(KEY_AD_MUTE, cfg.adMute)
+            .putBoolean(KEY_BLOCK_COMMENTS, cfg.blockComments)
+            .putBoolean(KEY_CANCEL_AUTOPLAY, cfg.cancelAutoplay)
+            .putBoolean(KEY_HIDE_SUGGESTIONS, cfg.hideWatchSuggestions)
+            .apply()
+        notifyListeners()
+    }
+
+    fun snoozeShieldFor(durationMs: Long) {
+        snoozeUntilElapsedMs = SystemClock.elapsedRealtime() + durationMs
+    }
+
+    fun clearSnooze() {
+        snoozeUntilElapsedMs = 0L
+    }
+
+    fun isSnoozed(): Boolean {
+        return snoozeUntilElapsedMs > SystemClock.elapsedRealtime()
+    }
+
+    fun snoozeSuggestionsFor(durationMs: Long) {
+        suggestionsPeekUntilElapsedMs = SystemClock.elapsedRealtime() + durationMs
+    }
+
+    fun isSuggestionsSnoozed(): Boolean {
+        return suggestionsPeekUntilElapsedMs > SystemClock.elapsedRealtime()
+    }
+
+    fun getStats(context: Context): ShieldStats {
+        val p = prefs(context)
+        return ShieldStats(
+            shortsBlocked = p.getInt(KEY_STAT_SHORTS, 0),
+            adsSkipped = p.getInt(KEY_STAT_ADS, 0),
+            commentsClosed = p.getInt(KEY_STAT_COMMENTS, 0),
+            autoplayCancelled = p.getInt(KEY_STAT_AUTOPLAY, 0)
+        )
+    }
+
+    fun incrementStat(context: Context, stat: StatField) {
+        val p = prefs(context)
+        val key = when (stat) {
+            StatField.SHORTS_BLOCKED -> KEY_STAT_SHORTS
+            StatField.AD_SKIPPED -> KEY_STAT_ADS
+            StatField.COMMENT_CLOSED -> KEY_STAT_COMMENTS
+            StatField.AUTOPLAY_CANCELLED -> KEY_STAT_AUTOPLAY
         }
-
-        val patchObj = try {
-            JSONObject(patchJsonString)
-        } catch (_: Exception) {
-            JSONObject()
-        }
-
-        val keys = patchObj.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            currentObj.put(key, patchObj.get(key))
-        }
-
-        val updated = currentObj.toString()
-        prefs(context).edit().putString(KEY_STORAGE_JSON, updated).apply()
-        return updated
+        p.edit().putInt(key, p.getInt(key, 0) + 1).apply()
+        notifyListeners()
     }
 
-    fun getStatsJson(): String {
-        return JSONObject().apply {
-            put("hiddenCount", lastHiddenCount)
-            put("visibleCount", lastVisibleCount)
-            put("totalCards", lastTotalCards)
-            put("url", lastUrl)
-        }.toString()
+    fun resetStats(context: Context) {
+        prefs(context).edit()
+            .putInt(KEY_STAT_SHORTS, 0)
+            .putInt(KEY_STAT_ADS, 0)
+            .putInt(KEY_STAT_COMMENTS, 0)
+            .putInt(KEY_STAT_AUTOPLAY, 0)
+            .apply()
+        notifyListeners()
     }
 
-    // --- Android System Shield Toggles ---
-
-    fun isBlockYoutubeAppEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_SHIELD_BLOCK_YT_APP, false)
-
-    fun setBlockYoutubeAppEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_SHIELD_BLOCK_YT_APP, enabled).apply()
-    }
-
-    fun isBlockYoutubeAppShortsEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_SHIELD_BLOCK_YT_SHORTS, true)
-
-    fun setBlockYoutubeAppShortsEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_SHIELD_BLOCK_YT_SHORTS, enabled).apply()
-    }
-
-    fun isSkipYoutubeAppAdsEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_SHIELD_SKIP_YT_ADS, true)
-
-    fun setSkipYoutubeAppAdsEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_SHIELD_SKIP_YT_ADS, enabled).apply()
-    }
-
-    fun isBlockBrowserYoutubeEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_SHIELD_BLOCK_BROWSER_YT, true)
-
-    fun setBlockBrowserYoutubeEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_SHIELD_BLOCK_BROWSER_YT, enabled).apply()
+    enum class StatField {
+        SHORTS_BLOCKED,
+        AD_SKIPPED,
+        COMMENT_CLOSED,
+        AUTOPLAY_CANCELLED
     }
 }

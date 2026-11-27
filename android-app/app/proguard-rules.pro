@@ -1,4 +1,2 @@
-# Keep JavascriptInterface methods for WebView bridge
--keepclassmembers class com.focusfeed.app.FocusFeedJsBridge {
-    @android.webkit.JavascriptInterface <methods>;
-}
+-keep class com.focusfeed.app.MainActivity { *; }
+-keep class com.focusfeed.app.YouTubeBlockerAccessibilityService { *; }
