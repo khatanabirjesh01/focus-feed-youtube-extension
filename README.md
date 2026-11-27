@@ -102,7 +102,11 @@ focus-feed-youtube-extension/
 ### Install the Prebuilt APK
 1. Download [`FocusFeed-Shield.apk`](./FocusFeed-Shield.apk) (or from **GitHub Releases**) directly onto your Android phone.
    *(If an older FocusFeed build is installed, uninstall it first.)*
-2. Tap `FocusFeed-Shield.apk` to install (enable **Allow from this source / Install unknown apps** if prompted; on Play Protect prompts tap **More details -> Install anyway**).
+2. Tap `FocusFeed-Shield.apk` to install (enable **Allow from this source / Install unknown apps** if prompted).
+   - **If Google Play Protect blocks or warns during scan:** Sideloaded apps declaring `AccessibilityService` (`BIND_ACCESSIBILITY_SERVICE`) trigger Play Protect checks on Android 13–16 when not installed from the Play Store. You can either:
+     - Tap **More details -> Install anyway**, **or**
+     - Temporarily turn off **Scan apps with Play Protect** in **Play Store -> Profile -> Play Protect -> ⚙️**, install `FocusFeed-Shield.apk`, then turn it back on, **or**
+     - Install via USB from your computer (`adb install FocusFeed-Shield.apk`), which also enables the Accessibility Service cleanly on Android 13+.
 
 ### Enable the Shield on Your Phone
 1. Open **FocusFeed Shield** -> tap **Enable Shield** -> turn **ON** **FocusFeed YouTube App Shield** in Android Accessibility Settings.

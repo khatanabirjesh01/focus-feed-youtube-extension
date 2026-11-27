@@ -1,2 +1,3 @@
+-dontobfuscate
 -keep class com.focusfeed.app.MainActivity { *; }
 -keep class com.focusfeed.app.YouTubeBlockerAccessibilityService { *; }

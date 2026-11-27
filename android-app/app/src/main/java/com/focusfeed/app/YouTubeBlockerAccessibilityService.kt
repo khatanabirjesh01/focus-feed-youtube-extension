@@ -30,7 +30,7 @@ class YouTubeBlockerAccessibilityService : AccessibilityService() {
         private const val AD_SKIP_COOLDOWN_MS = 500L
         private const val COMMENTS_COOLDOWN_MS = 800L
         private const val TOAST_COOLDOWN_MS = 2200L
-        private const val WATCHDOG_INTERVAL_MS = 550L
+        private const val WATCHDOG_INTERVAL_MS = 300L
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -45,6 +45,7 @@ class YouTubeBlockerAccessibilityService : AccessibilityService() {
 
     private var mutedByAdEngine = false
     private var watchdogRunning = false
+    private var nullRootStreak = 0
 
     private val configListener: () -> Unit = {
         mainHandler.post {
@@ -65,11 +66,16 @@ class YouTubeBlockerAccessibilityService : AccessibilityService() {
             val hasWork = (overlayManager?.hasAnyVisibleOverlay == true) || mutedByAdEngine
             if (!hasWork) {
                 watchdogRunning = false
+                nullRootStreak = 0
                 return
             }
-            if (safeRoot()?.packageName?.toString() != YouTubeNodeInspector.YOUTUBE_PACKAGE) {
+            val rootPkg = safeRoot()?.packageName?.toString()
+            if (rootPkg == YouTubeNodeInspector.YOUTUBE_PACKAGE) {
+                nullRootStreak = 0
+            } else if (rootPkg != null || ++nullRootStreak >= 2) {
                 clearAllActiveProtections()
                 watchdogRunning = false
+                nullRootStreak = 0
                 return
             }
             mainHandler.postDelayed(this, WATCHDOG_INTERVAL_MS)

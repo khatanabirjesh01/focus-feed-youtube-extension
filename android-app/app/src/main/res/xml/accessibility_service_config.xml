@@ -6,4 +6,5 @@
     android:canPerformGestures="false"
     android:canRetrieveWindowContent="true"
     android:description="@string/accessibility_service_description"
-    android:notificationTimeout="120" />
+    android:notificationTimeout="120"
+    android:packageNames="com.google.android.youtube" />
